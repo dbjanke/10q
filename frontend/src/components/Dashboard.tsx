@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Conversation } from '../types';
 import * as api from '../hooks/useApi';
+import { MAX_TITLE_LENGTH } from '../config/validation';
 
 export default function Dashboard() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -10,6 +11,7 @@ export default function Dashboard() {
   const [showNewModal, setShowNewModal] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [creating, setCreating] = useState(false);
+  const [modalError, setModalError] = useState<string | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -32,14 +34,16 @@ export default function Dashboard() {
 
   async function handleCreateConversation(e: React.FormEvent) {
     e.preventDefault();
-    if (!newTitle.trim()) return;
+    if (!newTitle.trim() || newTitle.length > MAX_TITLE_LENGTH) return;
 
     try {
       setCreating(true);
+      setModalError(null);
       const result = await api.createConversation(newTitle.trim());
       navigate(`/conversation/${result.conversation.id}`);
     } catch (err) {
-      setError('Failed to create conversation');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to create conversation';
+      setModalError(errorMessage);
       console.error(err);
       setCreating(false);
     }
@@ -75,7 +79,10 @@ export default function Dashboard() {
             <p className="text-gray-600 mt-1">Guided thinking through 10 questions</p>
           </div>
           <button
-            onClick={() => setShowNewModal(true)}
+            onClick={() => {
+              setShowNewModal(true);
+              setModalError(null);
+            }}
             className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition"
           >
             Start New Conversation
@@ -92,7 +99,10 @@ export default function Dashboard() {
           <div className="bg-white rounded-lg shadow p-12 text-center">
             <p className="text-gray-500 mb-4">No conversations yet</p>
             <button
-              onClick={() => setShowNewModal(true)}
+              onClick={() => {
+                setShowNewModal(true);
+                setModalError(null);
+              }}
               className="text-blue-600 hover:text-blue-700 font-medium"
             >
               Create your first conversation
@@ -153,15 +163,27 @@ export default function Dashboard() {
                 onChange={(e) => setNewTitle(e.target.value)}
                 placeholder="Enter a topic or question..."
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                maxLength={MAX_TITLE_LENGTH}
                 autoFocus
                 disabled={creating}
               />
+              <div className="mt-2 text-sm text-right ${
+                newTitle.length > MAX_TITLE_LENGTH - 20 ? 'text-orange-600 font-medium' : 'text-gray-500'
+              }">
+                {newTitle.length} / {MAX_TITLE_LENGTH} characters
+              </div>
+              {modalError && (
+                <div className="mt-3 bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded text-sm">
+                  {modalError}
+                </div>
+              )}
               <div className="flex justify-end gap-3 mt-6">
                 <button
                   type="button"
                   onClick={() => {
                     setShowNewModal(false);
                     setNewTitle('');
+                    setModalError(null);
                   }}
                   className="px-4 py-2 text-gray-700 hover:text-gray-900"
                   disabled={creating}
@@ -170,7 +192,7 @@ export default function Dashboard() {
                 </button>
                 <button
                   type="submit"
-                  disabled={!newTitle.trim() || creating}
+                  disabled={!newTitle.trim() || newTitle.length > MAX_TITLE_LENGTH || creating}
                   className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {creating ? 'Creating...' : 'Start'}

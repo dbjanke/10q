@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { MAX_RESPONSE_LENGTH } from '../config/validation';
 
 interface ResponseInputProps {
   onSubmit: (response: string) => void;
@@ -16,6 +17,9 @@ export default function ResponseInput({ onSubmit, disabled }: ResponseInputProps
     }
   }
 
+  const charsRemaining = MAX_RESPONSE_LENGTH - response.length;
+  const isNearLimit = charsRemaining < 50;
+
   return (
     <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow p-6">
       <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -27,11 +31,13 @@ export default function ResponseInput({ onSubmit, disabled }: ResponseInputProps
         placeholder="Take your time to reflect and respond..."
         className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
         rows={6}
+        maxLength={MAX_RESPONSE_LENGTH}
         disabled={disabled}
       />
       <div className="flex justify-between items-center mt-4">
-        <span className="text-sm text-gray-500">
-          {response.length} characters
+        <span className={`text-sm ${isNearLimit ? 'text-orange-600 font-medium' : 'text-gray-500'
+          }`}>
+          {response.length} / {MAX_RESPONSE_LENGTH} characters
         </span>
         <button
           type="submit"

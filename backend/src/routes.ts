@@ -3,6 +3,7 @@ import * as conversationService from './services/conversation.service.js';
 import * as openaiService from './services/openai.service.js';
 import * as exportService from './services/export.service.js';
 import { CreateConversationRequest, SubmitResponseRequest } from './types.js';
+import { MAX_TITLE_LENGTH, MAX_RESPONSE_LENGTH } from './config/validation.js';
 
 const router = Router();
 
@@ -13,6 +14,13 @@ router.post('/conversations', async (req: Request, res: Response) => {
 
     if (!title || title.trim().length === 0) {
       return res.status(400).json({ error: 'Title is required' });
+    }
+
+    // Enforce maximum title length
+    if (title.length > MAX_TITLE_LENGTH) {
+      return res.status(400).json({
+        error: `Title too long. Maximum length is ${MAX_TITLE_LENGTH} characters.`
+      });
     }
 
     const conversation = conversationService.createConversation(title.trim());
@@ -108,6 +116,13 @@ router.post('/conversations/:id/response', async (req: Request, res: Response) =
 
     if (!response || response.trim().length === 0) {
       return res.status(400).json({ error: 'Response is required' });
+    }
+
+    // Enforce maximum response length for security/stability
+    if (response.length > MAX_RESPONSE_LENGTH) {
+      return res.status(400).json({
+        error: `Response too long. Maximum length is ${MAX_RESPONSE_LENGTH} characters.`
+      });
     }
 
     const conversation = conversationService.getConversationById(id);

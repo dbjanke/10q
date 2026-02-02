@@ -22,3 +22,22 @@ body {
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+
+/* Details element animation */
+details summary::-webkit-details-marker {
+  display: none;
+}
+
+details summary {
+  list-style: none;
+  cursor: pointer;
+  user-select: none;
+}
+
+details[open] summary svg {
+  transform: rotate(180deg);
+}
+
+details summary svg {
+  transition: transform 0.2s ease-in-out;
+}
