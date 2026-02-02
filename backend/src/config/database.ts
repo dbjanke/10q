@@ -1,0 +1,51 @@
+import Database from 'better-sqlite3';
+import { readFileSync, mkdirSync } from 'fs';
+import { join, dirname } from 'path';
+
+function getDatabasePath(): string {
+  return process.env.DATABASE_PATH || './backend/data/10q.db';
+}
+
+let db: Database.Database | null = null;
+
+export function initializeDatabase(): Database.Database {
+  if (db) {
+    return db;
+  }
+
+  const DATABASE_PATH = getDatabasePath();
+  console.log('Initializing database at:', DATABASE_PATH);
+
+  // Create data directory if it doesn't exist
+  const dbDir = dirname(DATABASE_PATH);
+  mkdirSync(dbDir, { recursive: true });
+
+  db = new Database(DATABASE_PATH);
+
+  // Enable foreign keys
+  db.pragma('foreign_keys = ON');
+
+  // Read and execute schema
+  const schemaPath = join(__dirname, '../../database/schema.sql');
+  const schema = readFileSync(schemaPath, 'utf-8');
+
+  db.exec(schema);
+
+  console.log('Database initialized successfully');
+
+  return db;
+}
+
+export function getDatabase(): Database.Database {
+  if (!db) {
+    throw new Error('Database not initialized. Call initializeDatabase() first.');
+  }
+  return db;
+}
+
+export function closeDatabase(): void {
+  if (db) {
+    db.close();
+    db = null;
+  }
+}

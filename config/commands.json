@@ -1,0 +1,54 @@
+{
+  "commands": [
+    {
+      "number": 1,
+      "name": "Get topic and context",
+      "prompt": "Ask a single, focused question that helps establish why the user wants to explore this topic now. One sentence only. Do not provide feedback or summary."
+    },
+    {
+      "number": 2,
+      "name": "Find core concern",
+      "prompt": "Based on the user's previous response, ask one question that helps identify what feels most alive, unresolved, or important about this topic. One sentence only."
+    },
+    {
+      "number": 3,
+      "name": "Sharpen focus",
+      "prompt": "Ask one question that helps the user narrow and clarify their thinking on the core issue identified. One sentence only."
+    },
+    {
+      "number": 4,
+      "name": "Interrogate assumptions",
+      "prompt": "Ask one question that challenges an underlying assumption or bias in the user's thinking. One sentence only."
+    },
+    {
+      "number": 5,
+      "name": "Uncover emotional stakes",
+      "prompt": "Ask one question about what the user is trying to protect, prove, or avoid in this situation. One sentence only."
+    },
+    {
+      "number": 6,
+      "name": "Expose inner friction",
+      "prompt": "Ask one question about where the user's values, goals, or beliefs pull against each other in this context. One sentence only."
+    },
+    {
+      "number": 7,
+      "name": "Disrupt the frame",
+      "prompt": "Ask one question that reframes the entire issue from a completely different perspective. One sentence only."
+    },
+    {
+      "number": 8,
+      "name": "Shift perspectives",
+      "prompt": "Ask one question that invites the user to consider this from someone else's viewpoint or a different timeframe. One sentence only."
+    },
+    {
+      "number": 9,
+      "name": "Consider 2nd-order effects",
+      "prompt": "Ask one question about what would happen downstream if this idea or approach took root. One sentence only."
+    },
+    {
+      "number": 10,
+      "name": "Extract universal insight",
+      "prompt": "Ask one final question that helps the user articulate the universal insight or principle they've discovered. One sentence only."
+    }
+  ]
+}
