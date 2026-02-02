@@ -7,7 +7,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 function getDatabasePath(): string {
-  return process.env.DATABASE_PATH || './backend/data/10q.db';
+  return process.env.DATABASE_PATH || './data/10q.db';
 }
 
 let db: Database.Database | null = null;

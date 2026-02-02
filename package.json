@@ -14,7 +14,8 @@
     "test": "npm run test:backend && npm run test:frontend",
     "test:backend": "cd backend && npm test",
     "test:frontend": "cd frontend && npm test",
-    "test:watch": "concurrently \"npm run test:backend -- --watch\" \"npm run test:frontend -- --watch\""
+    "test:watch": "concurrently \"npm run test:backend -- --watch\" \"npm run test:frontend -- --watch\"",
+    "verify": "npm run build && npm test && npm start"
   },
   "keywords": [
     "ai",

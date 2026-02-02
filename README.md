@@ -71,7 +71,7 @@ OPENAI_API_KEY=sk-your-key-here
 OPENAI_MODEL=gpt-4o
 PORT=3001
 NODE_ENV=production
-DATABASE_PATH=./backend/data/10q.db
+DATABASE_PATH=./data/10q.db
 ```
 
 ### Customizing Questions
@@ -124,4 +124,3 @@ React, TypeScript, Vite, TailwindCSS, Express, SQLite, OpenAI GPT-4o
 ## License
 
 MIT
-
