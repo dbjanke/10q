@@ -1,6 +1,10 @@
 import Database from 'better-sqlite3';
 import { readFileSync, mkdirSync } from 'fs';
 import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 function getDatabasePath(): string {
   return process.env.DATABASE_PATH || './backend/data/10q.db';

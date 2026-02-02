@@ -1,9 +1,14 @@
 import express from 'express';
 import cors from 'cors';
-import { join } from 'path';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
 import * as dotenv from 'dotenv';
-import { initializeDatabase } from './config/database';
-import routes from './routes';
+import { initializeDatabase } from './config/database.js';
+import routes from './routes.js';
+
+// ES module equivalent of __dirname
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 // Load .env from root directory
 dotenv.config({ path: join(__dirname, '../../.env') });

@@ -1,4 +1,4 @@
-import { ConversationWithMessages } from '../types';
+import { ConversationWithMessages } from '../types.js';
 
 export function exportToMarkdown(conversation: ConversationWithMessages): string {
   let markdown = `# ${conversation.title}\n\n`;

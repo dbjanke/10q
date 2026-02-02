@@ -1,5 +1,5 @@
-import { getDatabase } from '../config/database';
-import { Conversation, Message, ConversationWithMessages } from '../types';
+import { getDatabase } from '../config/database.js';
+import { Conversation, Message, ConversationWithMessages } from '../types.js';
 
 export function createConversation(title: string): Conversation {
   const db = getDatabase();

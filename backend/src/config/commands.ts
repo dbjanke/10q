@@ -1,6 +1,10 @@
 import { readFileSync } from 'fs';
-import { join } from 'path';
-import { Command } from '../types';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
+import { Command } from '../types.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 let commands: Command[] | null = null;
 

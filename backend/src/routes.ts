@@ -1,8 +1,8 @@
 import { Router, Request, Response } from 'express';
-import * as conversationService from './services/conversation.service';
-import * as openaiService from './services/openai.service';
-import * as exportService from './services/export.service';
-import { CreateConversationRequest, SubmitResponseRequest } from './types';
+import * as conversationService from './services/conversation.service.js';
+import * as openaiService from './services/openai.service.js';
+import * as exportService from './services/export.service.js';
+import { CreateConversationRequest, SubmitResponseRequest } from './types.js';
 
 const router = Router();
 

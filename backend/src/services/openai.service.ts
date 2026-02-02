@@ -1,7 +1,7 @@
 import OpenAI from 'openai';
-import { Message } from '../types';
-import { getCommand } from '../config/commands';
-import { loadSystemPrompts } from '../config/system-prompt';
+import { Message } from '../types.js';
+import { getCommand } from '../config/commands.js';
+import { loadSystemPrompts } from '../config/system-prompt.js';
 
 let openaiClient: OpenAI | null = null;
 
