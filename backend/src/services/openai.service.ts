@@ -30,6 +30,11 @@ export async function generateQuestion(
     throw new Error(`No command found for question number ${questionNumber}`);
   }
 
+  // Return static question if defined (avoids API call for Q1)
+  if (command.staticQuestion) {
+    return command.staticQuestion;
+  }
+
   const systemPrompts = loadSystemPrompts();
 
   // Build conversation context

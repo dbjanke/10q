@@ -3,7 +3,8 @@
     {
       "number": 1,
       "name": "Get topic and context",
-      "prompt": "Ask a single, focused question that helps establish why the user wants to explore this topic now. One sentence only. Do not provide feedback or summary."
+      "prompt": "Ask a single, focused question that helps establish why the user wants to explore this topic now. One sentence only. Do not provide feedback or summary.",
+      "staticQuestion": "What brings you to explore this topic right now?"
     },
     {
       "number": 2,

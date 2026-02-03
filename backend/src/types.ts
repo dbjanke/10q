@@ -20,6 +20,7 @@ export interface Command {
   number: number;
   name: string;
   prompt: string;
+  staticQuestion?: string;
 }
 
 export interface SystemPrompts {
