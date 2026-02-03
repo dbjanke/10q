@@ -2,54 +2,54 @@
   "commands": [
     {
       "number": 1,
-      "name": "Get topic and context",
-      "prompt": "Ask a single, focused question that helps establish why the user wants to explore this topic now. One sentence only. Do not provide feedback or summary.",
-      "staticQuestion": "What brings you to explore this topic right now?"
+      "name": "Set the focus and stakes",
+      "prompt": "Ask a question that clarifies what the user wants to explore, why it matters to them right now, and what prompted this line of thinking.",
+      "staticQuestion": "Why does this topic feel important to you right now?"
     },
     {
       "number": 2,
-      "name": "Find core concern",
-      "prompt": "Based on the user's previous response, ask one question that helps identify what feels most alive, unresolved, or important about this topic. One sentence only."
+      "name": "Surface the real concern",
+      "prompt": "Ask a question that gets underneath the topic to the specific issue, tension, or uncertainty that feels most unresolved or emotionally charged for the user."
     },
     {
       "number": 3,
-      "name": "Sharpen focus",
-      "prompt": "Ask one question that helps the user narrow and clarify their thinking on the core issue identified. One sentence only."
+      "name": "State the working belief",
+      "prompt": "Ask a question that pushes the user to clearly articulate their current best guess, belief, or claim about what is true, important, or driving the situation."
     },
     {
       "number": 4,
-      "name": "Interrogate assumptions",
-      "prompt": "Ask one question that challenges an underlying assumption or bias in the user's thinking. One sentence only."
+      "name": "Examine what the belief rests on",
+      "prompt": "Ask a question that surfaces what the user’s claim is based on—experiences, observations, data, stories, or trusted voices—and how solid each feels to them."
     },
     {
       "number": 5,
-      "name": "Uncover emotional stakes",
-      "prompt": "Ask one question about what the user is trying to protect, prove, or avoid in this situation. One sentence only."
+      "name": "Pressure-test assumptions",
+      "prompt": "Ask a question that gently challenges the user’s framing by pressing on possible assumptions, blind spots, missing counterexamples, or convenient explanations in their reasoning."
     },
     {
       "number": 6,
-      "name": "Expose inner friction",
-      "prompt": "Ask one question about where the user's values, goals, or beliefs pull against each other in this context. One sentence only."
+      "name": "Reveal what’s emotionally at stake",
+      "prompt": "Ask a question that uncovers what the user stands to gain, protect, avoid, or lose if their claim turns out to be true."
     },
     {
       "number": 7,
-      "name": "Disrupt the frame",
-      "prompt": "Ask one question that reframes the entire issue from a completely different perspective. One sentence only."
+      "name": "Expose internal conflict",
+      "prompt": "Ask a question that brings out any tension between the user’s values, goals, self-image, or desires and the position they’re currently holding."
     },
     {
       "number": 8,
-      "name": "Shift perspectives",
-      "prompt": "Ask one question that invites the user to consider this from someone else's viewpoint or a different timeframe. One sentence only."
+      "name": "Reframe without changing the topic",
+      "prompt": "Ask a question that applies a single, controlled reframing—such as flipping an assumption or shifting the lens—while staying anchored to the same core issue."
     },
     {
       "number": 9,
-      "name": "Consider 2nd-order effects",
-      "prompt": "Ask one question about what would happen downstream if this idea or approach took root. One sentence only."
+      "name": "View it through another lens",
+      "prompt": "Ask a question that examines the claim from another perspective, such as someone with different incentives, expertise, or consequences tied to the outcome."
     },
     {
       "number": 10,
-      "name": "Extract universal insight",
-      "prompt": "Ask one final question that helps the user articulate the universal insight or principle they've discovered. One sentence only."
+      "name": "Distill the takeaway",
+      "prompt": "Ask a question that helps the user extract a reusable insight or principle from the conversation and identify a concrete next step their thinking suggests."
     }
   ]
 }
