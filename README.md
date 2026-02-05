@@ -92,6 +92,8 @@ Database access is routed through a store interface so the business logic stays 
 
 ## Development
 
+Engineering principles and architectural preferences are documented in [AGENTS.md](AGENTS.md).
+
 ```bash
 # Build everything
 npm run build

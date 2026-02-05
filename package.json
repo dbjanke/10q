@@ -11,11 +11,14 @@
     "build": "npm run build:frontend && npm run build:backend",
     "build:frontend": "cd frontend && npm run build",
     "build:backend": "cd backend && npm run build",
+    "lint": "npm run lint:backend && npm run lint:frontend",
+    "lint:backend": "cd backend && npm install && npm run lint",
+    "lint:frontend": "cd frontend && npm install && npm run lint",
     "test": "npm run test:backend && npm run test:frontend",
     "test:backend": "cd backend && npm test",
     "test:frontend": "cd frontend && npm test",
     "test:watch": "concurrently \"npm run test:backend -- --watch\" \"npm run test:frontend -- --watch\"",
-    "verify": "npm run build && npm test && npm start"
+    "verify": "npm run lint && npm run build && npm test && npm start"
   },
   "keywords": [
     "ai",
@@ -26,7 +29,7 @@
   "author": "",
   "license": "MIT",
   "devDependencies": {
-    "concurrently": "^8.2.2"
+    "concurrently": "^9.2.1"
   },
   "dependencies": {
     "typescript": "^5.9.3"

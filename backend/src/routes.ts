@@ -23,6 +23,13 @@ const responseConcurrencyLimit = concurrencyLimit({
   max: MAX_CONCURRENT_SUBMISSIONS,
 });
 
+function parseIdParam(rawId: string | string[] | undefined): number {
+  if (Array.isArray(rawId)) {
+    return Number.parseInt(rawId[0] ?? '', 10);
+  }
+  return Number.parseInt(rawId ?? '', 10);
+}
+
 // Liveness probe
 router.get('/ping', (_req: Request, res: Response) => {
   res.status(200).send('ok');
@@ -102,7 +109,7 @@ router.get('/conversations', (req: Request, res: Response) => {
 // Get conversation by ID
 router.get('/conversations/:id', (req: Request, res: Response) => {
   try {
-    const id = parseInt(req.params.id);
+    const id = parseIdParam(req.params.id);
 
     if (isNaN(id)) {
       return res.status(400).json({ error: 'Invalid conversation ID' });
@@ -124,7 +131,7 @@ router.get('/conversations/:id', (req: Request, res: Response) => {
 // Delete conversation
 router.delete('/conversations/:id', (req: Request, res: Response) => {
   try {
-    const id = parseInt(req.params.id);
+    const id = parseIdParam(req.params.id);
 
     if (isNaN(id)) {
       return res.status(400).json({ error: 'Invalid conversation ID' });
@@ -150,7 +157,7 @@ router.post(
   responseConcurrencyLimit,
   async (req: Request, res: Response) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseIdParam(req.params.id);
       const { response } = req.body as SubmitResponseRequest;
 
       if (isNaN(id)) {
@@ -235,7 +242,7 @@ router.post(
 // Export conversation to markdown
 router.get('/conversations/:id/export', (req: Request, res: Response) => {
   try {
-    const id = parseInt(req.params.id);
+    const id = parseIdParam(req.params.id);
 
     if (isNaN(id)) {
       return res.status(400).json({ error: 'Invalid conversation ID' });

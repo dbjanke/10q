@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, afterAll, vi } from 'vitest';
 import Database from 'better-sqlite3';
 import { createTestDatabase, closeTestDatabase } from '../fixtures/testDatabase.js';
 
@@ -35,7 +35,16 @@ describe('conversation.service', () => {
     afterEach(() => {
         if (mockDb) {
             closeTestDatabase(mockDb);
+            mockDb = null as any;
         }
+    });
+
+    afterAll(() => {
+        if (mockDb) {
+            closeTestDatabase(mockDb);
+            mockDb = null as any;
+        }
+        vi.resetModules();
     });
 
     describe('createConversation', () => {

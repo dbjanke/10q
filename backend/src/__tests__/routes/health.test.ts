@@ -10,6 +10,7 @@ vi.mock('../../stores/conversation.store.js', () => ({
 
 describe('Routes - Health', () => {
     let app: express.Application;
+    let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
 
     beforeAll(() => {
         app = express();
@@ -18,10 +19,12 @@ describe('Routes - Health', () => {
     });
 
     beforeEach(() => {
+        consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
         vi.clearAllMocks();
     });
 
     afterAll(() => {
+        consoleErrorSpy?.mockRestore();
         vi.restoreAllMocks();
     });
 

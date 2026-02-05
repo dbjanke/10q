@@ -47,13 +47,13 @@ if (NODE_ENV === 'production') {
   app.use(express.static(frontendPath));
 
   // Fallback to index.html for client-side routing
-  app.get('*', (req, res) => {
+  app.get(/.*/, (req, res) => {
     res.sendFile(join(frontendPath, 'index.html'));
   });
 }
 
 // Error handling middleware
-app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error('Unhandled error:', err);
   res.status(500).json({ error: 'Internal server error' });
 });
