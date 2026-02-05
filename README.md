@@ -72,6 +72,7 @@ OPENAI_MODEL=gpt-4o
 PORT=3001
 NODE_ENV=production
 DATABASE_PATH=./data/10q.db
+DATA_STORE=sqlite
 ```
 
 ### Customizing Questions
@@ -79,6 +80,10 @@ DATABASE_PATH=./data/10q.db
 The 10-question structure is defined in `config/commands.json`. Each command has a `prompt` that instructs the AI on what type of question to generate.
 
 System prompts for question generation and summarization are in `config/system-prompts.json`.
+
+### Data Store Boundary
+
+Database access is routed through a store interface so the business logic stays stable if the storage engine changes. The current implementation is SQLite, but the boundary is defined in `backend/src/stores/conversation.store.ts` with the SQLite implementation in `backend/src/stores/sqlite/conversation.store.ts`.
 
 ## Development
 
