@@ -5,8 +5,23 @@ import * as exportService from './services/export.service.js';
 import { CreateConversationRequest, SubmitResponseRequest } from './types.js';
 import { MAX_TITLE_LENGTH, MAX_RESPONSE_LENGTH } from './config/validation.js';
 import { getConversationStore } from './stores/conversation.store.js';
+import { rateLimit } from './middleware/rateLimit.js';
+import { concurrencyLimit } from './middleware/concurrencyLimit.js';
 
 const router = Router();
+
+const RESPONSE_RATE_LIMIT_WINDOW_MS = Number(process.env.RESPONSE_RATE_LIMIT_WINDOW_MS || 60000);
+const RESPONSE_RATE_LIMIT_MAX = Number(process.env.RESPONSE_RATE_LIMIT_MAX || 30);
+const MAX_CONCURRENT_SUBMISSIONS = Number(process.env.MAX_CONCURRENT_SUBMISSIONS || 5);
+
+const responseRateLimit = rateLimit({
+  windowMs: RESPONSE_RATE_LIMIT_WINDOW_MS,
+  max: RESPONSE_RATE_LIMIT_MAX,
+});
+
+const responseConcurrencyLimit = concurrencyLimit({
+  max: MAX_CONCURRENT_SUBMISSIONS,
+});
 
 // Liveness probe
 router.get('/ping', (_req: Request, res: Response) => {
@@ -129,89 +144,93 @@ router.delete('/conversations/:id', (req: Request, res: Response) => {
 });
 
 // Submit response and get next question
-router.post('/conversations/:id/response', async (req: Request, res: Response) => {
-  try {
-    const id = parseInt(req.params.id);
-    const { response } = req.body as SubmitResponseRequest;
+router.post(
+  '/conversations/:id/response',
+  responseRateLimit,
+  responseConcurrencyLimit,
+  async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { response } = req.body as SubmitResponseRequest;
 
-    if (isNaN(id)) {
-      return res.status(400).json({ error: 'Invalid conversation ID' });
-    }
+      if (isNaN(id)) {
+        return res.status(400).json({ error: 'Invalid conversation ID' });
+      }
 
-    if (!response || response.trim().length === 0) {
-      return res.status(400).json({ error: 'Response is required' });
-    }
+      if (!response || response.trim().length === 0) {
+        return res.status(400).json({ error: 'Response is required' });
+      }
 
-    // Enforce maximum response length for security/stability
-    if (response.length > MAX_RESPONSE_LENGTH) {
-      return res.status(400).json({
-        error: `Response too long. Maximum length is ${MAX_RESPONSE_LENGTH} characters.`
-      });
-    }
+      // Enforce maximum response length for security/stability
+      if (response.length > MAX_RESPONSE_LENGTH) {
+        return res.status(400).json({
+          error: `Response too long. Maximum length is ${MAX_RESPONSE_LENGTH} characters.`
+        });
+      }
 
-    const conversation = conversationService.getConversationById(id);
+      const conversation = conversationService.getConversationById(id);
 
-    if (!conversation) {
-      return res.status(404).json({ error: 'Conversation not found' });
-    }
+      if (!conversation) {
+        return res.status(404).json({ error: 'Conversation not found' });
+      }
 
-    if (conversation.completed) {
-      return res.status(400).json({ error: 'Conversation already completed' });
-    }
+      if (conversation.completed) {
+        return res.status(400).json({ error: 'Conversation already completed' });
+      }
 
-    const currentQuestionNumber = conversation.currentQuestionNumber;
+      const currentQuestionNumber = conversation.currentQuestionNumber;
 
-    // Save user's response
-    const responseMessage = conversationService.saveMessage(
-      id,
-      'response',
-      response.trim(),
-      currentQuestionNumber
-    );
+      // Save user's response
+      const responseMessage = conversationService.saveMessage(
+        id,
+        'response',
+        response.trim(),
+        currentQuestionNumber
+      );
 
-    // Check if we've completed all 10 questions
-    if (currentQuestionNumber >= 10) {
-      // Generate summary
+      // Check if we've completed all 10 questions
+      if (currentQuestionNumber >= 10) {
+        // Generate summary
+        const messages = conversationService.getConversationMessages(id);
+        const summary = await openaiService.generateSummary(messages);
+
+        // Save summary
+        conversationService.saveMessage(id, 'summary', summary);
+        conversationService.updateConversationSummary(id, summary);
+
+        return res.json({
+          savedResponse: responseMessage,
+          isComplete: true,
+          summary,
+        });
+      }
+
+      // Generate next question
+      const nextQuestionNumber = currentQuestionNumber + 1;
       const messages = conversationService.getConversationMessages(id);
-      const summary = await openaiService.generateSummary(messages);
+      const nextQuestion = await openaiService.generateQuestion(messages, nextQuestionNumber);
 
-      // Save summary
-      conversationService.saveMessage(id, 'summary', summary);
-      conversationService.updateConversationSummary(id, summary);
+      // Save next question
+      const questionMessage = conversationService.saveMessage(
+        id,
+        'question',
+        nextQuestion,
+        nextQuestionNumber
+      );
 
-      return res.json({
+      // Update conversation progress
+      conversationService.updateConversationProgress(id, nextQuestionNumber);
+
+      res.json({
         savedResponse: responseMessage,
-        isComplete: true,
-        summary,
+        nextQuestion: questionMessage,
+        isComplete: false,
       });
+    } catch (error) {
+      console.error('Error submitting response:', error);
+      res.status(500).json({ error: 'Failed to submit response' });
     }
-
-    // Generate next question
-    const nextQuestionNumber = currentQuestionNumber + 1;
-    const messages = conversationService.getConversationMessages(id);
-    const nextQuestion = await openaiService.generateQuestion(messages, nextQuestionNumber);
-
-    // Save next question
-    const questionMessage = conversationService.saveMessage(
-      id,
-      'question',
-      nextQuestion,
-      nextQuestionNumber
-    );
-
-    // Update conversation progress
-    conversationService.updateConversationProgress(id, nextQuestionNumber);
-
-    res.json({
-      savedResponse: responseMessage,
-      nextQuestion: questionMessage,
-      isComplete: false,
-    });
-  } catch (error) {
-    console.error('Error submitting response:', error);
-    res.status(500).json({ error: 'Failed to submit response' });
-  }
-});
+  });
 
 // Export conversation to markdown
 router.get('/conversations/:id/export', (req: Request, res: Response) => {

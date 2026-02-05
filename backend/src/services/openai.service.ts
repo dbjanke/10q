@@ -5,6 +5,26 @@ import { loadSystemPrompts } from '../config/system-prompt.js';
 
 let openaiClient: OpenAI | null = null;
 
+const OPENAI_TIMEOUT_MS = Number(process.env.OPENAI_TIMEOUT_MS || 15000);
+
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      reject(new Error('OpenAI request timed out'));
+    }, timeoutMs);
+
+    promise
+      .then((value) => {
+        clearTimeout(timeout);
+        resolve(value);
+      })
+      .catch((err) => {
+        clearTimeout(timeout);
+        reject(err);
+      });
+  });
+}
+
 function getOpenAIClient(): OpenAI {
   if (!openaiClient) {
     if (!process.env.OPENAI_API_KEY) {
@@ -71,12 +91,12 @@ export async function generateQuestion(
   });
 
   const openai = getOpenAIClient();
-  const completion = await openai.chat.completions.create({
+  const completion = await withTimeout(openai.chat.completions.create({
     model: getModel(),
     messages,
     temperature: 0.7,
     max_tokens: 150,
-  });
+  }), OPENAI_TIMEOUT_MS);
 
   const question = completion.choices[0]?.message?.content?.trim();
   if (!question) {
@@ -111,12 +131,12 @@ export async function generateSummary(conversationHistory: Message[]): Promise<s
   ];
 
   const openai = getOpenAIClient();
-  const completion = await openai.chat.completions.create({
+  const completion = await withTimeout(openai.chat.completions.create({
     model: getModel(),
     messages,
     temperature: 0.7,
     max_tokens: 500,
-  });
+  }), OPENAI_TIMEOUT_MS);
 
   const summary = completion.choices[0]?.message?.content?.trim();
   if (!summary) {
