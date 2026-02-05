@@ -1,18 +1,37 @@
+import { performance } from 'perf_hooks';
 import { getDatabase } from '../../config/database.js';
 import { Conversation, ConversationWithMessages, Message } from '../../types.js';
 import { ConversationStore } from '../conversation.store.js';
+
+const SLOW_QUERY_MS = Number(process.env.SLOW_QUERY_MS || 200);
+
+function withTiming<T>(label: string, fn: () => T): T {
+    const start = performance.now();
+    const result = fn();
+    const durationMs = performance.now() - start;
+
+    if (durationMs >= SLOW_QUERY_MS) {
+        console.warn(`[slow-query] ${label} took ${durationMs.toFixed(1)}ms`);
+    }
+
+    return result;
+}
 
 export class SQLiteConversationStore implements ConversationStore {
     createConversation(title: string): Conversation {
         const db = getDatabase();
 
-        const result = db
-            .prepare('INSERT INTO conversations (title, current_question_number) VALUES (?, 0)')
-            .run(title);
+        const result = withTiming('conversations.insert', () =>
+            db
+                .prepare('INSERT INTO conversations (title, current_question_number) VALUES (?, 0)')
+                .run(title)
+        );
 
-        const conversation = db
-            .prepare('SELECT * FROM conversations WHERE id = ?')
-            .get(result.lastInsertRowid) as any;
+        const conversation = withTiming('conversations.getById', () =>
+            db
+                .prepare('SELECT * FROM conversations WHERE id = ?')
+                .get(result.lastInsertRowid) as any
+        );
 
         return mapConversation(conversation);
     }
@@ -20,9 +39,11 @@ export class SQLiteConversationStore implements ConversationStore {
     getAllConversations(): Conversation[] {
         const db = getDatabase();
 
-        const rows = db
-            .prepare('SELECT * FROM conversations ORDER BY created_at DESC')
-            .all() as any[];
+        const rows = withTiming('conversations.getAll', () =>
+            db
+                .prepare('SELECT * FROM conversations ORDER BY created_at DESC')
+                .all() as any[]
+        );
 
         return rows.map(mapConversation);
     }
@@ -30,17 +51,21 @@ export class SQLiteConversationStore implements ConversationStore {
     getConversationById(id: number): ConversationWithMessages | null {
         const db = getDatabase();
 
-        const conversation = db
-            .prepare('SELECT * FROM conversations WHERE id = ?')
-            .get(id) as any;
+        const conversation = withTiming('conversations.getById', () =>
+            db
+                .prepare('SELECT * FROM conversations WHERE id = ?')
+                .get(id) as any
+        );
 
         if (!conversation) {
             return null;
         }
 
-        const messages = db
-            .prepare('SELECT * FROM messages WHERE conversation_id = ? ORDER BY created_at ASC')
-            .all(id) as any[];
+        const messages = withTiming('messages.getByConversation', () =>
+            db
+                .prepare('SELECT * FROM messages WHERE conversation_id = ? ORDER BY created_at ASC')
+                .all(id) as any[]
+        );
 
         return {
             ...mapConversation(conversation),
@@ -51,7 +76,9 @@ export class SQLiteConversationStore implements ConversationStore {
     deleteConversation(id: number): boolean {
         const db = getDatabase();
 
-        const result = db.prepare('DELETE FROM conversations WHERE id = ?').run(id);
+        const result = withTiming('conversations.delete', () =>
+            db.prepare('DELETE FROM conversations WHERE id = ?').run(id)
+        );
 
         return result.changes > 0;
     }
@@ -64,15 +91,19 @@ export class SQLiteConversationStore implements ConversationStore {
     ): Message {
         const db = getDatabase();
 
-        const result = db
-            .prepare(
-                'INSERT INTO messages (conversation_id, type, content, question_number) VALUES (?, ?, ?, ?)'
-            )
-            .run(conversationId, type, content, questionNumber || null);
+        const result = withTiming('messages.insert', () =>
+            db
+                .prepare(
+                    'INSERT INTO messages (conversation_id, type, content, question_number) VALUES (?, ?, ?, ?)'
+                )
+                .run(conversationId, type, content, questionNumber || null)
+        );
 
-        const message = db
-            .prepare('SELECT * FROM messages WHERE id = ?')
-            .get(result.lastInsertRowid) as any;
+        const message = withTiming('messages.getById', () =>
+            db
+                .prepare('SELECT * FROM messages WHERE id = ?')
+                .get(result.lastInsertRowid) as any
+        );
 
         return mapMessage(message);
     }
@@ -84,28 +115,39 @@ export class SQLiteConversationStore implements ConversationStore {
     ): void {
         const db = getDatabase();
 
-        db.prepare(
-            'UPDATE conversations SET current_question_number = ?, completed = ? WHERE id = ?'
-        ).run(questionNumber, completed ? 1 : 0, conversationId);
+        withTiming('conversations.updateProgress', () =>
+            db.prepare(
+                'UPDATE conversations SET current_question_number = ?, completed = ? WHERE id = ?'
+            ).run(questionNumber, completed ? 1 : 0, conversationId)
+        );
     }
 
     updateConversationSummary(conversationId: number, summary: string): void {
         const db = getDatabase();
 
-        db.prepare('UPDATE conversations SET summary = ?, completed = 1 WHERE id = ?').run(
-            summary,
-            conversationId
+        withTiming('conversations.updateSummary', () =>
+            db.prepare('UPDATE conversations SET summary = ?, completed = 1 WHERE id = ?').run(
+                summary,
+                conversationId
+            )
         );
     }
 
     getConversationMessages(conversationId: number): Message[] {
         const db = getDatabase();
 
-        const messages = db
-            .prepare('SELECT * FROM messages WHERE conversation_id = ? ORDER BY created_at ASC')
-            .all(conversationId) as any[];
+        const messages = withTiming('messages.getByConversation', () =>
+            db
+                .prepare('SELECT * FROM messages WHERE conversation_id = ? ORDER BY created_at ASC')
+                .all(conversationId) as any[]
+        );
 
         return messages.map(mapMessage);
+    }
+
+    checkHealth(): void {
+        const db = getDatabase();
+        withTiming('healthcheck', () => db.prepare('SELECT 1').get());
     }
 }
 

@@ -4,8 +4,32 @@ import * as openaiService from './services/openai.service.js';
 import * as exportService from './services/export.service.js';
 import { CreateConversationRequest, SubmitResponseRequest } from './types.js';
 import { MAX_TITLE_LENGTH, MAX_RESPONSE_LENGTH } from './config/validation.js';
+import { getConversationStore } from './stores/conversation.store.js';
 
 const router = Router();
+
+// Liveness probe
+router.get('/ping', (_req: Request, res: Response) => {
+  res.status(200).send('ok');
+});
+
+// Readiness probe (checks dependencies)
+router.get('/deep-ping', (_req: Request, res: Response) => {
+  const start = Date.now();
+
+  try {
+    const store = getConversationStore();
+    store.checkHealth();
+
+    res.json({
+      ok: true,
+      latencyMs: Date.now() - start,
+    });
+  } catch (error) {
+    console.error('Deep ping failed:', error);
+    res.status(503).json({ ok: false });
+  }
+});
 
 // Create new conversation
 router.post('/conversations', async (req: Request, res: Response) => {

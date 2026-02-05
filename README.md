@@ -73,6 +73,7 @@ PORT=3001
 NODE_ENV=production
 DATABASE_PATH=./data/10q.db
 DATA_STORE=sqlite
+SLOW_QUERY_MS=200
 ```
 
 ### Customizing Questions
