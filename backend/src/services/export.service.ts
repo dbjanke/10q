@@ -7,33 +7,50 @@ export function exportToMarkdown(conversation: ConversationWithMessages): string
   markdown += `---\n\n`;
 
   // Group messages by question number
-  const questions: { [key: number]: { question: string; response: string } } = {};
+  const questions = new Map<number, { question: string; response: string }>();
+
+  const getQuestionBucket = (questionNumber: number) => {
+    if (questionNumber < 1 || questionNumber > 10) {
+      return null;
+    }
+
+    const existing = questions.get(questionNumber);
+    if (existing) {
+      return existing;
+    }
+
+    const bucket = { question: '', response: '' };
+    questions.set(questionNumber, bucket);
+    return bucket;
+  };
 
   for (const msg of conversation.messages) {
     if (msg.type === 'question' && msg.questionNumber) {
-      if (!questions[msg.questionNumber]) {
-        questions[msg.questionNumber] = { question: '', response: '' };
+      const bucket = getQuestionBucket(msg.questionNumber);
+      if (bucket) {
+        bucket.question = msg.content;
       }
-      questions[msg.questionNumber].question = msg.content;
     } else if (msg.type === 'response' && msg.questionNumber) {
-      if (!questions[msg.questionNumber]) {
-        questions[msg.questionNumber] = { question: '', response: '' };
+      const bucket = getQuestionBucket(msg.questionNumber);
+      if (bucket) {
+        bucket.response = msg.content;
       }
-      questions[msg.questionNumber].response = msg.content;
     }
   }
 
   // Output questions and responses
   for (let i = 1; i <= 10; i++) {
-    if (questions[i]) {
-      markdown += `## Question ${i}\n\n`;
-      markdown += `${questions[i].question}\n\n`;
-      if (questions[i].response) {
-        markdown += `### Response\n\n`;
-        markdown += `${questions[i].response}\n\n`;
-      }
-      markdown += `---\n\n`;
+    const entry = questions.get(i);
+    if (!entry) {
+      continue;
     }
+    markdown += `## Question ${i}\n\n`;
+    markdown += `${entry.question}\n\n`;
+    if (entry.response) {
+      markdown += `### Response\n\n`;
+      markdown += `${entry.response}\n\n`;
+    }
+    markdown += `---\n\n`;
   }
 
   // Add summary if available

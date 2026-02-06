@@ -22,6 +22,8 @@ export function initializeDatabase(): Database.Database {
 
   // Create data directory if it doesn't exist
   const dbDir = dirname(DATABASE_PATH);
+  // dbDir is derived from DATABASE_PATH (config/env), not user input.
+  // eslint-disable-next-line security/detect-non-literal-fs-filename
   mkdirSync(dbDir, { recursive: true });
 
   db = new Database(DATABASE_PATH);

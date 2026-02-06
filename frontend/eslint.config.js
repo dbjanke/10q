@@ -55,7 +55,7 @@ export default [
             },
             'import/resolver': {
                 typescript: {
-                    project: ['./tsconfig.json', './tsconfig.node.json'],
+                    project: ['../tsconfig.json'],
                 },
                 node: {
                     extensions: ['.js', '.ts', '.tsx'],
