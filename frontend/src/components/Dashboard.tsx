@@ -64,64 +64,64 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-gray-600">Loading...</div>
+      <div className="page">
+        <div className="center muted">Loading...</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-4xl mx-auto px-4 py-8">
-        <div className="flex justify-between items-center mb-8">
+    <div className="page">
+      <div className="container">
+        <div className="toolbar">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">10Q</h1>
-            <p className="text-gray-600 mt-1">Guided thinking through 10 questions</p>
+            <h1 className="section-title">10Q</h1>
+            <p className="section-subtitle">Guided thinking through 10 questions</p>
           </div>
           <button
             onClick={() => {
               setShowNewModal(true);
               setModalError(null);
             }}
-            className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition"
+            className="btn btn-primary"
           >
             Start New Conversation
           </button>
         </div>
 
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-6">
+          <div className="error">
             {error}
           </div>
         )}
 
         {conversations.length === 0 ? (
-          <div className="bg-white rounded-lg shadow p-12 text-center">
-            <p className="text-gray-500 mb-4">No conversations yet</p>
+          <div className="card card-item" style={{ textAlign: 'center' }}>
+            <p className="muted" style={{ marginBottom: 12 }}>No conversations yet</p>
             <button
               onClick={() => {
                 setShowNewModal(true);
                 setModalError(null);
               }}
-              className="text-blue-600 hover:text-blue-700 font-medium"
+              className="btn btn-soft"
             >
               Create your first conversation
             </button>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="list">
             {conversations.map((conv) => (
               <div
                 key={conv.id}
                 onClick={() => navigate(`/conversation/${conv.id}`)}
-                className="bg-white rounded-lg shadow hover:shadow-md transition cursor-pointer p-6"
+                className="card card-item card-hover"
               >
-                <div className="flex justify-between items-start">
-                  <div className="flex-1">
-                    <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                <div className="row" style={{ alignItems: 'flex-start' }}>
+                  <div style={{ flex: 1 }}>
+                    <h3 style={{ fontSize: 20, fontWeight: 600, marginBottom: 8 }}>
                       {conv.title}
                     </h3>
-                    <div className="flex items-center gap-3 text-sm text-gray-500 mb-3">
+                    <div className="card-meta" style={{ marginBottom: 10 }}>
                       <span>{new Date(conv.createdAt).toLocaleDateString()}</span>
                       <span>•</span>
                       <span>
@@ -131,12 +131,12 @@ export default function Dashboard() {
                       </span>
                     </div>
                     {conv.summary && (
-                      <p className="text-gray-600 line-clamp-2">{conv.summary}</p>
+                      <p className="muted line-clamp-2">{conv.summary}</p>
                     )}
                   </div>
                   <button
                     onClick={(e) => handleDelete(conv.id, e)}
-                    className="ml-4 text-red-600 hover:text-red-700 text-sm font-medium"
+                    className="btn btn-danger"
                   >
                     Delete
                   </button>
@@ -148,13 +148,13 @@ export default function Dashboard() {
       </div>
 
       {showNewModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">
+        <div className="modal-backdrop">
+          <div className="modal">
+            <h2 className="modal-title">
               New Conversation
             </h2>
             <form onSubmit={handleCreateConversation}>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="muted" style={{ fontSize: 14, fontWeight: 600, marginBottom: 8, display: 'block' }}>
                 What would you like to explore?
               </label>
               <input
@@ -162,22 +162,28 @@ export default function Dashboard() {
                 value={newTitle}
                 onChange={(e) => setNewTitle(e.target.value)}
                 placeholder="Enter a topic or question..."
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="input"
                 maxLength={MAX_TITLE_LENGTH}
                 autoFocus
                 disabled={creating}
               />
-              <div className="mt-2 text-sm text-right ${
-                newTitle.length > MAX_TITLE_LENGTH - 20 ? 'text-orange-600 font-medium' : 'text-gray-500'
-              }">
+              <div
+                className="muted-small"
+                style={{
+                  marginTop: 8,
+                  textAlign: 'right',
+                  color: newTitle.length > MAX_TITLE_LENGTH - 20 ? '#c2410c' : undefined,
+                  fontWeight: newTitle.length > MAX_TITLE_LENGTH - 20 ? 600 : undefined,
+                }}
+              >
                 {newTitle.length} / {MAX_TITLE_LENGTH} characters
               </div>
               {modalError && (
-                <div className="mt-3 bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded text-sm">
+                <div className="error" style={{ marginTop: 12 }}>
                   {modalError}
                 </div>
               )}
-              <div className="flex justify-end gap-3 mt-6">
+              <div className="modal-footer">
                 <button
                   type="button"
                   onClick={() => {
@@ -185,7 +191,7 @@ export default function Dashboard() {
                     setNewTitle('');
                     setModalError(null);
                   }}
-                  className="px-4 py-2 text-gray-700 hover:text-gray-900"
+                  className="btn btn-ghost"
                   disabled={creating}
                 >
                   Cancel
@@ -193,7 +199,7 @@ export default function Dashboard() {
                 <button
                   type="submit"
                   disabled={!newTitle.trim() || newTitle.length > MAX_TITLE_LENGTH || creating}
-                  className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="btn btn-primary"
                 >
                   {creating ? 'Creating...' : 'Start'}
                 </button>
