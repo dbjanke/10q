@@ -8,11 +8,6 @@ import { getGoogleConfig } from '../config/env.js';
 export function configurePassport(): void {
     const { clientId, clientSecret, callbackUrl } = getGoogleConfig();
 
-    if (!clientId || !clientSecret) {
-        console.warn('Google OAuth is not configured. Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET.');
-        return;
-    }
-
     passport.serializeUser((user: User, done: (err: unknown, id?: number) => void) => {
         done(null, user.id);
     });

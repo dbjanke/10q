@@ -5,7 +5,7 @@ import { fileURLToPath } from 'url';
 import session from 'express-session';
 import passport from 'passport';
 import { initializeDatabase, getDatabase } from './config/database.js';
-import { loadEnv, getCookieSecure, getFrontendUrl, getNodeEnv, getSessionSecret } from './config/env.js';
+import { loadEnv, validateEnv, getCookieSecure, getFrontendUrl, getNodeEnv, getSessionSecret } from './config/env.js';
 import routes from './routes.js';
 import authRoutes from './routes/auth.js';
 import adminRoutes from './routes/admin.js';
@@ -18,6 +18,13 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 loadEnv();
+try {
+  validateEnv();
+} catch (error) {
+  const message = error instanceof Error ? error.message : String(error);
+  console.error(`Configuration error: ${message}`);
+  process.exit(1);
+}
 
 const app = express();
 const PORT = process.env.PORT || 3001;

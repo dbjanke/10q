@@ -19,29 +19,55 @@ export function loadEnv(): void {
     ];
 
     for (const candidate of envCandidates) {
+        // Candidate paths are fixed, internal repo-relative locations.
         // eslint-disable-next-line security/detect-non-literal-fs-filename
         if (existsSync(candidate)) {
             // eslint-disable-next-line security/detect-non-literal-fs-filename
             const parsed = dotenv.parse(readFileSync(candidate));
             for (const [key, value] of Object.entries(parsed)) {
+                // Keys come from a local .env file we control; avoid overriding real env.
                 // eslint-disable-next-line security/detect-object-injection
-                process.env[key] = value;
+                if (process.env[key] === undefined) {
+                    // eslint-disable-next-line security/detect-object-injection
+                    process.env[key] = value;
+                }
             }
             break;
         }
     }
 }
 
+function requireEnv(key: string): string {
+    // eslint-disable-next-line security/detect-object-injection
+    const value = process.env[key];
+    if (!value) {
+        throw new Error(`Missing required environment variable: ${key}`);
+    }
+    return value;
+}
+
+export function validateEnv(): void {
+    const nodeEnv = requireEnv('NODE_ENV');
+    requireEnv('FRONTEND_URL');
+    requireEnv('SESSION_SECRET');
+
+    if (nodeEnv !== 'test') {
+        requireEnv('GOOGLE_CLIENT_ID');
+        requireEnv('GOOGLE_CLIENT_SECRET');
+        requireEnv('GOOGLE_CALLBACK_URL');
+    }
+}
+
 export function getNodeEnv(): string {
-    return process.env.NODE_ENV || 'development';
+    return requireEnv('NODE_ENV');
 }
 
 export function getFrontendUrl(): string {
-    return process.env.FRONTEND_URL || 'http://localhost:5173';
+    return requireEnv('FRONTEND_URL');
 }
 
 export function getSessionSecret(): string {
-    return process.env.SESSION_SECRET || 'dev-session-secret-change-me';
+    return requireEnv('SESSION_SECRET');
 }
 
 export function getCookieSecure(): boolean {
@@ -53,14 +79,13 @@ export function isGoogleConfigured(): boolean {
 }
 
 export function getGoogleConfig(): {
-    clientId?: string;
-    clientSecret?: string;
+    clientId: string;
+    clientSecret: string;
     callbackUrl: string;
 } {
     return {
-        clientId: process.env.GOOGLE_CLIENT_ID,
-        clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-        callbackUrl:
-            process.env.GOOGLE_CALLBACK_URL || 'http://localhost:3001/api/auth/google/callback',
+        clientId: requireEnv('GOOGLE_CLIENT_ID'),
+        clientSecret: requireEnv('GOOGLE_CLIENT_SECRET'),
+        callbackUrl: requireEnv('GOOGLE_CALLBACK_URL'),
     };
 }
