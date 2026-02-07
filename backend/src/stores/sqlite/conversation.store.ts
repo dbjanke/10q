@@ -147,6 +147,31 @@ export class SQLiteConversationStore implements ConversationStore {
         return messages.map(mapMessage);
     }
 
+    deleteConversationMessagesByType(
+        conversationId: number,
+        type: 'question' | 'response' | 'summary'
+    ): void {
+        const db = getDatabase();
+
+        withTiming('messages.deleteByType', () =>
+            db
+                .prepare('DELETE FROM messages WHERE conversation_id = ? AND type = ?')
+                .run(conversationId, type)
+        );
+    }
+
+    deleteQuestionMessage(conversationId: number, questionNumber: number): void {
+        const db = getDatabase();
+
+        withTiming('messages.deleteQuestion', () =>
+            db
+                .prepare(
+                    "DELETE FROM messages WHERE conversation_id = ? AND type = 'question' AND question_number = ?"
+                )
+                .run(conversationId, questionNumber)
+        );
+    }
+
     checkHealth(): void {
         const db = getDatabase();
         withTiming('healthcheck', () => db.prepare('SELECT 1').get());

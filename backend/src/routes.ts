@@ -8,6 +8,7 @@ import { getConversationStore } from './stores/conversation.store.js';
 import { rateLimit } from './middleware/rateLimit.js';
 import { concurrencyLimit } from './middleware/concurrencyLimit.js';
 import { requireAuth } from './middleware/auth.js';
+import { requirePermission } from './middleware/permissions.js';
 import { parseIdParam } from './utils/params.js';
 
 const router = Router();
@@ -24,6 +25,8 @@ const responseRateLimit = rateLimit({
 const responseConcurrencyLimit = concurrencyLimit({
   max: MAX_CONCURRENT_SUBMISSIONS,
 });
+
+const REGENERATE_PERMISSION = 'regenerate_summary_question' as const;
 
 // Liveness probe
 router.get('/ping', (_req: Request, res: Response) => {
@@ -49,6 +52,103 @@ router.get('/deep-ping', (_req: Request, res: Response) => {
 });
 
 router.use(requireAuth);
+
+router.post(
+  '/conversations/:id/regenerate-summary',
+  requirePermission(REGENERATE_PERMISSION),
+  async (req: Request, res: Response) => {
+    try {
+      const userId = req.user!.id;
+      const id = parseIdParam(req.params.id);
+
+      if (isNaN(id)) {
+        return res.status(400).json({ error: 'Invalid conversation ID' });
+      }
+
+      const conversation = conversationService.getConversationById(userId, id);
+      if (!conversation) {
+        return res.status(404).json({ error: 'Conversation not found' });
+      }
+
+      if (!conversation.completed) {
+        return res.status(400).json({ error: 'Conversation not completed' });
+      }
+
+      const messages = conversationService.getConversationMessages(id);
+      const summary = await openaiService.generateSummary(messages);
+
+      conversationService.deleteConversationMessagesByType(id, 'summary');
+      const summaryMessage = conversationService.saveMessage(id, 'summary', summary);
+      conversationService.updateConversationSummary(id, summary);
+
+      return res.json({ summary: summaryMessage.content });
+    } catch (error) {
+      console.error('Error regenerating summary:', error);
+      return res.status(500).json({ error: 'Failed to regenerate summary' });
+    }
+  }
+);
+
+router.post(
+  '/conversations/:id/regenerate-question',
+  requirePermission(REGENERATE_PERMISSION),
+  async (req: Request, res: Response) => {
+    try {
+      const userId = req.user!.id;
+      const id = parseIdParam(req.params.id);
+
+      if (isNaN(id)) {
+        return res.status(400).json({ error: 'Invalid conversation ID' });
+      }
+
+      const conversation = conversationService.getConversationById(userId, id);
+      if (!conversation) {
+        return res.status(404).json({ error: 'Conversation not found' });
+      }
+
+      if (conversation.completed) {
+        return res.status(400).json({ error: 'Conversation already completed' });
+      }
+
+      const currentQuestionNumber = conversation.currentQuestionNumber;
+      if (!currentQuestionNumber || currentQuestionNumber <= 0) {
+        return res.status(400).json({ error: 'No active question to regenerate' });
+      }
+
+      const hasResponse = conversation.messages.some(
+        (message) => message.type === 'response' && message.questionNumber === currentQuestionNumber
+      );
+      if (hasResponse) {
+        return res.status(400).json({ error: 'Cannot regenerate an answered question' });
+      }
+
+      const history = conversation.messages.filter((message) => {
+        if (message.questionNumber !== currentQuestionNumber) {
+          return true;
+        }
+
+        return message.type !== 'question' && message.type !== 'response';
+      });
+
+      const nextQuestion = await openaiService.generateQuestion(history, currentQuestionNumber);
+
+      conversationService.deleteQuestionMessage(id, currentQuestionNumber);
+      const questionMessage = conversationService.saveMessage(
+        id,
+        'question',
+        nextQuestion,
+        currentQuestionNumber
+      );
+
+      conversationService.updateConversationProgress(id, currentQuestionNumber);
+
+      return res.json({ question: questionMessage });
+    } catch (error) {
+      console.error('Error regenerating question:', error);
+      return res.status(500).json({ error: 'Failed to regenerate question' });
+    }
+  }
+);
 
 // Create new conversation
 router.post('/conversations', async (req: Request, res: Response) => {

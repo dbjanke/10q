@@ -41,3 +41,14 @@ export function updateConversationSummary(conversationId: number, summary: strin
 export function getConversationMessages(conversationId: number): Message[] {
   return getConversationStore().getConversationMessages(conversationId);
 }
+
+export function deleteConversationMessagesByType(
+  conversationId: number,
+  type: 'question' | 'response' | 'summary'
+): void {
+  getConversationStore().deleteConversationMessagesByType(conversationId, type);
+}
+
+export function deleteQuestionMessage(conversationId: number, questionNumber: number): void {
+  getConversationStore().deleteQuestionMessage(conversationId, questionNumber);
+}

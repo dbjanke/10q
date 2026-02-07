@@ -20,7 +20,7 @@ export interface ConversationWithMessages extends Conversation {
   messages: Message[];
 }
 
-export type Permission = 'prompt_tools';
+export type Permission = 'regenerate_summary_question';
 
 export interface Group {
   id: number;

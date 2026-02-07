@@ -2,6 +2,7 @@ import Database from 'better-sqlite3';
 import { readFileSync, mkdirSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
+import { PERMISSIONS } from './permissions.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -36,6 +37,12 @@ export function initializeDatabase(): Database.Database {
   const schema = readFileSync(schemaPath, 'utf-8');
 
   db.exec(schema);
+
+  // One-time migration: rename legacy permission to the new name
+  const newPermission = PERMISSIONS[0];
+  db.prepare(
+    "UPDATE group_permissions SET permission = ? WHERE permission = 'prompt_tools'"
+  ).run(newPermission);
 
   console.log('Database initialized successfully');
 

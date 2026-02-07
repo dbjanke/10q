@@ -5,9 +5,12 @@ import { getExportUrl } from '../hooks/useApi';
 interface SummaryProps {
   conversationId: number;
   summary: string;
+  canRegenerate?: boolean;
+  regenerating?: boolean;
+  onRegenerate?: () => void;
 }
 
-export default function Summary({ conversationId, summary }: SummaryProps) {
+export default function Summary({ conversationId, summary, canRegenerate, regenerating, onRegenerate }: SummaryProps) {
   const navigate = useNavigate();
   const [copied, setCopied] = useState(false);
 
@@ -33,29 +36,41 @@ export default function Summary({ conversationId, summary }: SummaryProps) {
       </div>
 
       <div className="summary-box" style={{ marginBottom: 18 }}>
-        <div className="row" style={{ alignItems: 'flex-start', marginBottom: 12 }}>
+        <div className="row" style={{ alignItems: 'flex-start', marginBottom: 12, justifyContent: 'space-between', gap: 12 }}>
           <h3 style={{ fontSize: 18, fontWeight: 600 }}>Summary</h3>
-          <button
-            onClick={handleCopy}
-            className="btn btn-soft"
-            title="Copy summary to clipboard"
-          >
-            {copied ? (
-              <>
-                <svg width="16" height="16" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
-                  <path d="M5 13l4 4L19 7"></path>
-                </svg>
-                <span>Copied!</span>
-              </>
-            ) : (
-              <>
-                <svg width="16" height="16" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
-                  <path d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
-                </svg>
-                <span>Copy</span>
-              </>
+          <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
+            {canRegenerate && (
+              <button
+                onClick={onRegenerate}
+                className="btn btn-ghost"
+                disabled={regenerating}
+                title="Regenerate summary"
+              >
+                {regenerating ? 'Regenerating...' : 'Regenerate'}
+              </button>
             )}
-          </button>
+            <button
+              onClick={handleCopy}
+              className="btn btn-soft"
+              title="Copy summary to clipboard"
+            >
+              {copied ? (
+                <>
+                  <svg width="16" height="16" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
+                    <path d="M5 13l4 4L19 7"></path>
+                  </svg>
+                  <span>Copied!</span>
+                </>
+              ) : (
+                <>
+                  <svg width="16" height="16" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
+                    <path d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                  </svg>
+                  <span>Copy</span>
+                </>
+              )}
+            </button>
+          </div>
         </div>
         <div style={{ whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>{summary}</div>
       </div>

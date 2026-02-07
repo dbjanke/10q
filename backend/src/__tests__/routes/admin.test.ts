@@ -119,7 +119,7 @@ describe('Admin routes', () => {
 
         const response = await request(app)
             .patch('/api/admin/groups/1')
-            .send({ permissions: 'prompt_tools' });
+            .send({ permissions: 'regenerate_summary_question' });
 
         expect(response.status).toBe(400);
         expect(response.body.error).toBe('Permissions must be an array');

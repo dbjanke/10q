@@ -3,6 +3,7 @@ import {
   ConversationWithMessages,
   CreateConversationResponse,
   ResponseSubmissionResult,
+  Message,
   Group,
   Permission,
   User,
@@ -63,6 +64,18 @@ export async function getConversation(id: number): Promise<ConversationWithMessa
 export async function deleteConversation(id: number): Promise<void> {
   return fetchApi<void>(`/conversations/${id}`, {
     method: 'DELETE',
+  });
+}
+
+export async function regenerateSummary(conversationId: number): Promise<{ summary: string }> {
+  return fetchApi<{ summary: string }>(`/conversations/${conversationId}/regenerate-summary`, {
+    method: 'POST',
+  });
+}
+
+export async function regenerateQuestion(conversationId: number): Promise<{ question: Message }> {
+  return fetchApi<{ question: Message }>(`/conversations/${conversationId}/regenerate-question`, {
+    method: 'POST',
   });
 }
 

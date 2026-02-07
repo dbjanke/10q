@@ -22,7 +22,14 @@ vi.mock('../../components/ResponseInput', () => ({
 }));
 
 vi.mock('../../components/Summary', () => ({
-    default: ({ summary }: any) => <div data-testid="summary">{summary}</div>,
+    default: ({ summary, canRegenerate, onRegenerate }: any) => (
+        <div data-testid="summary">
+            <div>{summary}</div>
+            {canRegenerate && (
+                <button onClick={onRegenerate}>Regenerate</button>
+            )}
+        </div>
+    ),
 }));
 
 vi.mock('../../components/LoadingIndicator', () => ({
@@ -305,5 +312,118 @@ describe('ConversationView - Completion Flow', () => {
             expect(screen.queryByTestId('loading-indicator')).not.toBeInTheDocument();
         });
         expect(screen.getByTestId('submit-btn')).toBeInTheDocument();
+    });
+
+    it('allows regenerating summary with permission', async () => {
+        const user = userEvent.setup();
+
+        const completedConversation = {
+            id: 1,
+            title: 'Test Conversation',
+            summary: 'Original summary',
+            createdAt: new Date().toISOString(),
+            completed: true,
+            currentQuestionNumber: 10,
+            messages: [
+                {
+                    id: 1,
+                    conversationId: 1,
+                    type: 'summary',
+                    content: 'Original summary',
+                    questionNumber: null,
+                    createdAt: new Date().toISOString(),
+                },
+            ],
+        };
+
+        vi.mocked(api.getConversation).mockResolvedValue(completedConversation as any);
+        vi.mocked(api.regenerateSummary).mockResolvedValue({ summary: 'Updated summary' } as any);
+
+        const currentUserWithPermission = {
+            id: 1,
+            email: 'test@example.com',
+            name: 'Test User',
+            role: 'user' as const,
+            status: 'active' as const,
+            permissions: ['regenerate_summary_question'] as const,
+        };
+
+        render(
+            <BrowserRouter>
+                <ConversationView currentUser={currentUserWithPermission as any} onLogout={vi.fn()} />
+            </BrowserRouter>
+        );
+
+        await waitFor(() => {
+            expect(screen.getByTestId('summary')).toBeInTheDocument();
+        });
+
+        const regenButton = screen.getByRole('button', { name: 'Regenerate' });
+        await user.click(regenButton);
+
+        await waitFor(() => {
+            expect(api.regenerateSummary).toHaveBeenCalledWith(1);
+        });
+    });
+
+    it('allows regenerating current question with permission', async () => {
+        const user = userEvent.setup();
+
+        const inProgressConversation = {
+            id: 1,
+            title: 'Test Conversation',
+            summary: null,
+            createdAt: new Date().toISOString(),
+            completed: false,
+            currentQuestionNumber: 2,
+            messages: [
+                {
+                    id: 1,
+                    conversationId: 1,
+                    type: 'question',
+                    content: 'Question 2?',
+                    questionNumber: 2,
+                    createdAt: new Date().toISOString(),
+                },
+            ],
+        };
+
+        vi.mocked(api.getConversation).mockResolvedValue(inProgressConversation as any);
+        vi.mocked(api.regenerateQuestion).mockResolvedValue({
+            question: {
+                id: 2,
+                conversationId: 1,
+                type: 'question',
+                content: 'Updated question?',
+                questionNumber: 2,
+                createdAt: new Date().toISOString(),
+            },
+        } as any);
+
+        const currentUserWithPermission = {
+            id: 1,
+            email: 'test@example.com',
+            name: 'Test User',
+            role: 'user' as const,
+            status: 'active' as const,
+            permissions: ['regenerate_summary_question'] as const,
+        };
+
+        render(
+            <BrowserRouter>
+                <ConversationView currentUser={currentUserWithPermission as any} onLogout={vi.fn()} />
+            </BrowserRouter>
+        );
+
+        await waitFor(() => {
+            expect(screen.getByText('Question 2 of 10')).toBeInTheDocument();
+        });
+
+        const regenButton = screen.getByRole('button', { name: 'Regenerate question' });
+        await user.click(regenButton);
+
+        await waitFor(() => {
+            expect(api.regenerateQuestion).toHaveBeenCalledWith(1);
+        });
     });
 });

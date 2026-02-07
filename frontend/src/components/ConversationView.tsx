@@ -19,6 +19,8 @@ export default function ConversationView({ currentUser, onLogout }: Conversation
   const [conversation, setConversation] = useState<ConversationWithMessages | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [regeneratingSummary, setRegeneratingSummary] = useState(false);
+  const [regeneratingQuestion, setRegeneratingQuestion] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const topRef = useRef<HTMLDivElement>(null);
@@ -94,6 +96,40 @@ export default function ConversationView({ currentUser, onLogout }: Conversation
     }
   }
 
+  async function handleRegenerateSummary() {
+    if (!conversation) return;
+
+    try {
+      setRegeneratingSummary(true);
+      setError(null);
+
+      await api.regenerateSummary(conversation.id);
+      await loadConversation(conversation.id);
+    } catch (err) {
+      setError('Failed to regenerate summary');
+      console.error(err);
+    } finally {
+      setRegeneratingSummary(false);
+    }
+  }
+
+  async function handleRegenerateQuestion() {
+    if (!conversation) return;
+
+    try {
+      setRegeneratingQuestion(true);
+      setError(null);
+
+      await api.regenerateQuestion(conversation.id);
+      await loadConversation(conversation.id);
+    } catch (err) {
+      setError('Failed to regenerate question');
+      console.error(err);
+    } finally {
+      setRegeneratingQuestion(false);
+    }
+  }
+
   if (loading) {
     return (
       <div className="page">
@@ -133,6 +169,7 @@ export default function ConversationView({ currentUser, onLogout }: Conversation
 
   const currentQuestion = questionPairs.find((pair) => !pair.response)?.question;
   const isComplete = conversation.completed;
+  const canRegenerate = currentUser.permissions?.includes('regenerate_summary_question') || false;
 
   return (
     <div className="page">
@@ -170,6 +207,9 @@ export default function ConversationView({ currentUser, onLogout }: Conversation
             <Summary
               conversationId={conversation.id}
               summary={summaryMessage.content}
+              canRegenerate={canRegenerate}
+              regenerating={regeneratingSummary}
+              onRegenerate={handleRegenerateSummary}
             />
 
             {/* Collapsed conversation history */}
@@ -236,7 +276,20 @@ export default function ConversationView({ currentUser, onLogout }: Conversation
               <LoadingIndicator />
             ) : (
               currentQuestion && (
-                <ResponseInput onSubmit={handleResponseSubmit} disabled={submitting} />
+                <div className="stack" style={{ gap: 12 }}>
+                  {canRegenerate && (
+                    <div className="row" style={{ justifyContent: 'flex-end' }}>
+                      <button
+                        className="btn btn-ghost"
+                        onClick={handleRegenerateQuestion}
+                        disabled={regeneratingQuestion}
+                      >
+                        {regeneratingQuestion ? 'Regenerating...' : 'Regenerate question'}
+                      </button>
+                    </div>
+                  )}
+                  <ResponseInput onSubmit={handleResponseSubmit} disabled={submitting} />
+                </div>
               )
             )}
           </>

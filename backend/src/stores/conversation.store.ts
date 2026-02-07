@@ -19,6 +19,11 @@ export interface ConversationStore {
     ): void;
     updateConversationSummary(conversationId: number, summary: string): void;
     getConversationMessages(conversationId: number): Message[];
+    deleteConversationMessagesByType(
+        conversationId: number,
+        type: 'question' | 'response' | 'summary'
+    ): void;
+    deleteQuestionMessage(conversationId: number, questionNumber: number): void;
     checkHealth(): void;
 }
 

@@ -27,7 +27,7 @@ describe('AdminUsers', () => {
             {
                 id: 1,
                 name: 'prompt-tools',
-                permissions: ['prompt_tools'],
+                permissions: ['regenerate_summary_question'],
                 memberIds: [2],
             },
         ];
@@ -44,7 +44,7 @@ describe('AdminUsers', () => {
 
         vi.mocked(api.getUsers).mockResolvedValue(users as any);
         vi.mocked(api.getGroups).mockResolvedValue(groups as any);
-        vi.mocked(api.getPermissions).mockResolvedValue(['prompt_tools'] as any);
+        vi.mocked(api.getPermissions).mockResolvedValue(['regenerate_summary_question'] as any);
         vi.mocked(api.updateUser).mockResolvedValue({
             ...users[0],
             groupIds: [],

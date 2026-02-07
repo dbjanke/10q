@@ -125,6 +125,51 @@ describe('useApi', () => {
         });
     });
 
+    describe('regenerateSummary', () => {
+        it('should post to regenerate summary endpoint', async () => {
+            (global.fetch as any).mockResolvedValueOnce(
+                mockFetchSuccess({ summary: 'Updated summary' })
+            );
+
+            const result = await api.regenerateSummary(1);
+
+            expect(global.fetch).toHaveBeenCalledWith('/api/conversations/1/regenerate-summary', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+            });
+
+            expect(result.summary).toBe('Updated summary');
+        });
+    });
+
+    describe('regenerateQuestion', () => {
+        it('should post to regenerate question endpoint', async () => {
+            (global.fetch as any).mockResolvedValueOnce(
+                mockFetchSuccess({
+                    question: {
+                        id: 1,
+                        conversationId: 1,
+                        type: 'question',
+                        content: 'Updated question',
+                        questionNumber: 2,
+                        createdAt: new Date().toISOString(),
+                    },
+                })
+            );
+
+            const result = await api.regenerateQuestion(1);
+
+            expect(global.fetch).toHaveBeenCalledWith('/api/conversations/1/regenerate-question', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+            });
+
+            expect(result.question.content).toBe('Updated question');
+        });
+    });
+
     describe('submitResponse', () => {
         it('should submit a response and get next question', async () => {
             (global.fetch as any).mockResolvedValueOnce(

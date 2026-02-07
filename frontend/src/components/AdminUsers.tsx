@@ -182,6 +182,10 @@ export default function AdminUsers({ currentUser, onLogout }: AdminUsersProps) {
             <div className="container">
                 <AppHeader user={currentUser} onLogout={onLogout} />
 
+                <div style={{ marginBottom: 24 }}>
+                    <a href="/" className="btn btn-ghost">← Back to Dashboard</a>
+                </div>
+
                 <div className="card" style={{ padding: 24, marginBottom: 24 }}>
                     <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 6 }}>Allowlist</h2>
                     <p className="muted" style={{ marginBottom: 16 }}>
