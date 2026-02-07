@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { MAX_TITLE_LENGTH, MAX_RESPONSE_LENGTH } from '../../config/validation';
+import { MAX_TITLE_LENGTH, MAX_RESPONSE_LENGTH, MAX_GROUP_NAME_LENGTH } from '../../config/validation';
 
 describe('Frontend Validation Constants', () => {
     describe('MAX_TITLE_LENGTH', () => {
@@ -33,6 +33,21 @@ describe('Frontend Validation Constants', () => {
 
         it('should be larger than MAX_TITLE_LENGTH', () => {
             expect(MAX_RESPONSE_LENGTH).toBeGreaterThan(MAX_TITLE_LENGTH);
+        });
+    });
+
+    describe('MAX_GROUP_NAME_LENGTH', () => {
+        it('should be defined', () => {
+            expect(MAX_GROUP_NAME_LENGTH).toBeDefined();
+        });
+
+        it('should be a positive number', () => {
+            expect(MAX_GROUP_NAME_LENGTH).toBeGreaterThan(0);
+        });
+
+        it('should be reasonable for a group name', () => {
+            expect(MAX_GROUP_NAME_LENGTH).toBeGreaterThanOrEqual(8);
+            expect(MAX_GROUP_NAME_LENGTH).toBeLessThanOrEqual(200);
         });
     });
 });

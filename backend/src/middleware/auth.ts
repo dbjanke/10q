@@ -6,6 +6,11 @@ export function requireAuth(req: Request, res: Response, next: NextFunction) {
         return res.status(401).json({ error: 'Authentication required' });
     }
 
+    const user = req.user as User;
+    if (user.status !== 'active') {
+        return res.status(403).json({ error: 'Account is not active' });
+    }
+
     return next();
 }
 
@@ -13,6 +18,10 @@ export function requireAdmin(req: Request, res: Response, next: NextFunction) {
     const user = req.user as User | undefined;
     if (!user) {
         return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    if (user.status !== 'active') {
+        return res.status(403).json({ error: 'Account is not active' });
     }
 
     if (user.role !== 'admin') {

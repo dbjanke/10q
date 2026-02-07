@@ -3,6 +3,8 @@ import {
   ConversationWithMessages,
   CreateConversationResponse,
   ResponseSubmissionResult,
+  Group,
+  Permission,
   User,
 } from '../types';
 
@@ -91,7 +93,7 @@ export async function inviteUser(email: string, role: 'admin' | 'user' = 'user')
 
 export async function updateUser(
   id: number,
-  updates: Partial<Pick<User, 'role' | 'status'>>
+  updates: Partial<Pick<User, 'role' | 'status' | 'groupIds'>>
 ): Promise<User> {
   return fetchApi<User>(`/admin/users/${id}`, {
     method: 'PATCH',
@@ -101,4 +103,34 @@ export async function updateUser(
 
 export async function deleteUser(id: number): Promise<void> {
   await fetchApi(`/admin/users/${id}`, { method: 'DELETE' });
+}
+
+export async function getPermissions(): Promise<Permission[]> {
+  const response = await fetchApi<{ permissions: Permission[] }>('/admin/permissions');
+  return response.permissions;
+}
+
+export async function getGroups(): Promise<Group[]> {
+  return fetchApi<Group[]>('/admin/groups');
+}
+
+export async function createGroup(name: string): Promise<Group> {
+  return fetchApi<Group>('/admin/groups', {
+    method: 'POST',
+    body: JSON.stringify({ name }),
+  });
+}
+
+export async function updateGroup(
+  id: number,
+  updates: Partial<Pick<Group, 'name' | 'permissions'>>
+): Promise<Group> {
+  return fetchApi<Group>(`/admin/groups/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(updates),
+  });
+}
+
+export async function deleteGroup(id: number): Promise<void> {
+  await fetchApi(`/admin/groups/${id}`, { method: 'DELETE' });
 }

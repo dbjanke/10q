@@ -20,6 +20,15 @@ export interface ConversationWithMessages extends Conversation {
   messages: Message[];
 }
 
+export type Permission = 'prompt_tools';
+
+export interface Group {
+  id: number;
+  name: string;
+  permissions: Permission[];
+  memberIds?: number[];
+}
+
 export interface User {
   id: number;
   email: string;
@@ -27,6 +36,9 @@ export interface User {
   avatarUrl?: string;
   role: 'admin' | 'user';
   status: 'invited' | 'active' | 'disabled';
+  groups?: string[];
+  permissions?: Permission[];
+  groupIds?: number[];
 }
 
 export interface CreateConversationResponse {

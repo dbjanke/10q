@@ -1,4 +1,4 @@
-import { User } from '../types.js';
+import { Group, Permission, User } from '../types.js';
 import { SQLiteUserStore } from './sqlite/user.store.js';
 
 export interface UserStore {
@@ -24,6 +24,17 @@ export interface UserStore {
     ): User | null;
     deleteUser(id: number): boolean;
     getAdminCount(): number;
+    listGroups(): Group[];
+    listGroupsWithMembers(): Group[];
+    createGroup(name: string): Group;
+    updateGroup(id: number, name: string): Group | null;
+    deleteGroup(id: number): boolean;
+    getGroupPermissions(groupId: number): Permission[];
+    setGroupPermissions(groupId: number, permissions: Permission[]): void;
+    getUserGroupIds(userId: number): number[];
+    getUserGroupNames(userId: number): string[];
+    getUserPermissions(userId: number): Permission[];
+    setUserGroups(userId: number, groupIds: number[]): void;
 }
 
 let store: UserStore | null = null;

@@ -1,3 +1,6 @@
+import type { Permission } from './config/permissions.js';
+export type { Permission } from './config/permissions.js';
+
 export interface Conversation {
   id: number;
   title: string;
@@ -5,6 +8,13 @@ export interface Conversation {
   createdAt: Date;
   completed: boolean;
   currentQuestionNumber: number;
+}
+
+export interface Group {
+  id: number;
+  name: string;
+  permissions: Permission[];
+  memberIds?: number[];
 }
 
 export interface User {
@@ -16,6 +26,8 @@ export interface User {
   status: 'invited' | 'active' | 'disabled';
   createdAt: Date;
   lastLoginAt?: Date;
+  groups?: string[];
+  permissions?: Permission[];
 }
 
 export interface Message {

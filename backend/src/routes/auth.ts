@@ -3,10 +3,12 @@ import passport from 'passport';
 import { requireAuth } from '../middleware/auth.js';
 import { getFrontendUrl, isGoogleConfigured } from '../config/env.js';
 import { User } from '../types.js';
+import { getUserStore } from '../stores/user.store.js';
 
 const router = Router();
 
 function sanitizeUser(user: User) {
+    const userStore = getUserStore();
     return {
         id: user.id,
         email: user.email,
@@ -14,6 +16,8 @@ function sanitizeUser(user: User) {
         avatarUrl: user.avatarUrl,
         role: user.role,
         status: user.status,
+        groups: userStore.getUserGroupNames(user.id),
+        permissions: userStore.getUserPermissions(user.id),
     };
 }
 
