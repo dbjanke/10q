@@ -1,53 +1,18 @@
 # 10Q - Guided Thinking Application
 
-A web application that guides you through deep reflection using 10 AI-generated questions. Each conversation is a journey through thoughtful inquiry, helping you explore topics with clarity and insight.
-
-## What Is This?
-
-10Q asks you 10 progressively deeper questions about any topic you choose. Each question builds on your previous answers, guiding you from surface-level thoughts to deeper insights. After answering all 10 questions, you receive a cohesive summary of your exploration.
-
-The questioning follows a structured approach: establishing context → identifying core concerns → challenging assumptions → exploring emotional stakes → reframing perspectives → extracting universal insights.
+10Q is a guided‑thinking web app that asks 10 AI‑generated questions about a topic you choose. Each question builds on your prior answers to move from surface context to deeper insight, and the session concludes with a cohesive summary you can review or export.
 
 ## Prerequisites
 
 - Node.js 18 or higher
 - OpenAI API key ([Get one here](https://platform.openai.com/api-keys))
+- Google OAuth credentials (Client ID/Secret)
 
-## Installation
+## Install & Run
 
-1. Clone or download this repository
-
-2. Run the setup script:
-```bash
-npm run setup
-```
-
-This will install dependencies, create the `.env` file, and build the application.
-
-3. Edit `.env` and add your OpenAI API key:
-```bash
-OPENAI_API_KEY=sk-your-api-key-here
-```
-
-## Running the Application
-
-### Production Mode
-
-```bash
-npm start
-```
-
-The application will be available at `http://localhost:3001`
-
-### Development Mode
-
-For development with hot-reload:
-
-```bash
-npm run dev
-```
-
-This runs the frontend on `http://localhost:5173` and backend on `http://localhost:3001`
+- Install dependencies and build: `npm run setup`
+- Development (Vite + API): `npm run dev`
+- Production: `npm start`
 
 ## How to Use
 
@@ -61,24 +26,7 @@ This runs the frontend on `http://localhost:5173` and backend on `http://localho
 
 ### Environment Variables
 
-Edit `.env` to customize:
-
-```bash
-# Required
-OPENAI_API_KEY=sk-your-key-here
-
-# Optional (defaults shown)
-OPENAI_MODEL=gpt-4o
-PORT=3001
-NODE_ENV=production
-DATABASE_PATH=./data/10q.db
-DATA_STORE=sqlite
-SLOW_QUERY_MS=200
-RESPONSE_RATE_LIMIT_WINDOW_MS=60000
-RESPONSE_RATE_LIMIT_MAX=30
-MAX_CONCURRENT_SUBMISSIONS=5
-OPENAI_TIMEOUT_MS=15000
-```
+Use [.env.example](.env.example) as the source of truth. The server fails fast if required values are missing. You’ll need OpenAI credentials plus Google OAuth (Client ID/Secret and callback URL). Set `FRONTEND_URL` to the deployed frontend origin and ensure the Google OAuth callback URL is registered with your Google Cloud client.
 
 ### Customizing Questions
 
@@ -94,29 +42,23 @@ Database access is routed through a store interface so the business logic stays 
 
 Engineering principles and architectural preferences are documented in [AGENTS.md](AGENTS.md).
 
-```bash
-# Build everything
-npm run build
-
-# Build frontend or backend separately
-npm run build:frontend
-npm run build:backend
-
-# Run in development mode with hot-reload
-npm run dev
-```
-
 ## Data & Privacy
 
-- All conversations stored locally in SQLite (`backend/data/10q.db`)
-- OpenAI API key stored in `.env` (never committed to git)
+- All conversations stored locally in SQLite (`backend/data/10q.db`), scoped per user
+- OpenAI and Google OAuth credentials stored in `.env` (never committed to git)
 - No external data storage beyond OpenAI API calls
-- Designed for single-user local use
+- Access is restricted to allowlisted Google accounts; admins manage the allowlist
 
 ## Troubleshooting
 
 **"OpenAI API key not set"**  
 Edit `.env` and add your API key: `OPENAI_API_KEY=sk-...`
+
+**"Missing required environment variable"**  
+Set the required value in `.env` (see Configuration). The server fails fast when required values are missing.
+
+**"Google OAuth is not configured"**  
+Ensure `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, and `GOOGLE_CALLBACK_URL` are set, and add the callback URL in your Google Cloud OAuth client.
 
 **"Database initialization failed"**  
 Ensure `backend/data/` directory exists and has write permissions
@@ -131,8 +73,8 @@ Change `PORT` in `.env` or kill the process: `lsof -ti:3001 | xargs kill`
 
 ## Built With
 
-React, TypeScript, Vite, TailwindCSS, Express, SQLite, OpenAI GPT-4o
+React, TypeScript, Vite, TailwindCSS, Express, SQLite, OpenAI GPT-4o, Google OAuth
 
 ## License
 
-MIT
+See [LICENSE](LICENSE).
