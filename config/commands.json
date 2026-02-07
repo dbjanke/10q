@@ -13,43 +13,43 @@
     },
     {
       "number": 3,
-      "name": "State the working belief",
-      "prompt": "Ask a question that pushes the user to clearly articulate their current best guess, belief, or claim about what is true, important, or driving the situation."
+      "name": "Articulate the perceived structure",
+      "prompt": "Ask a question that invites the user to describe the forces, patterns, or underlying structures they believe are shaping the situation right now—surfacing their current mental model of how this dynamic works, without requiring a conclusion, judgment, or defended claim."
     },
     {
       "number": 4,
       "name": "Examine what the belief rests on",
-      "prompt": "Ask a question that surfaces what the user’s claim is based on—experiences, observations, data, stories, or trusted voices—and how solid each feels to them."
+      "prompt": "Ask a question that surfaces what the user’s claim is based on and how solid each of those foundations actually feels to them."
     },
     {
       "number": 5,
       "name": "Pressure-test assumptions",
-      "prompt": "Ask a question that gently challenges the user’s framing by pressing on possible assumptions, blind spots, missing counterexamples, or convenient explanations in their reasoning."
+      "prompt": "Ask a single, open-ended question that confronts the user with the most self-serving, identity-protective, or convenient assumption underlying their claim, explicitly naming the bias or reasoning shortcut at work and asking what concrete evidence, counterexample, or lived experience would genuinely force them to revise or abandon their current framing."
     },
     {
       "number": 6,
-      "name": "Reveal what’s emotionally at stake",
-      "prompt": "Ask a question that uncovers what the user stands to gain, protect, avoid, or lose if their claim turns out to be true."
+      "name": "Reveal emotional stakes",
+      "prompt": "Ask a question that forces the user to reflect on what they are emotionally protecting or afraid to lose if their claim is true, in a way that invites personal reflection rather than a short or factual answer."
     },
     {
       "number": 7,
-      "name": "Expose internal conflict",
-      "prompt": "Ask a question that brings out any tension between the user’s values, goals, self-image, or desires and the position they’re currently holding."
+      "name": "Expose the friction",
+      "prompt": "Ask a question that forces the user to reflect on where their claim clashes with another value, goal, or self-image they care about, and what that tension feels like for them."
     },
     {
       "number": 8,
-      "name": "Reframe without changing the topic",
-      "prompt": "Ask a question that applies a single, controlled reframing—such as flipping an assumption or shifting the lens—while staying anchored to the same core issue."
+      "name": "Switch perspective",
+      "prompt": "Ask a question that forces the user to view the same core idea from the perspective of someone who would see or experience it very differently, without changing the topic or easing the tension uncovered earlier."
     },
     {
       "number": 9,
-      "name": "View it through another lens",
-      "prompt": "Ask a question that examines the claim from another perspective, such as someone with different incentives, expertise, or consequences tied to the outcome."
+      "name": "Consider implications",
+      "prompt": "Ask a question that pushes the user to consider the downstream implications or second-order effects of their claim if it were widely acted on or turned into a rule."
     },
     {
       "number": 10,
-      "name": "Distill the takeaway",
-      "prompt": "Ask a question that helps the user extract a reusable insight or principle from the conversation and identify a concrete next step their thinking suggests."
+      "name": "Find what changes",
+      "prompt": "Ask a question that forces the user to confront what this line of thinking would no longer let them comfortably ignore in real life or in the world around them."
     }
   ]
 }

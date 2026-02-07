@@ -6,6 +6,9 @@ import { loadSystemPrompts } from '../config/system-prompt.js';
 let openaiClient: OpenAI | null = null;
 
 const OPENAI_TIMEOUT_MS = Number(process.env.OPENAI_TIMEOUT_MS || 15000);
+const RESPONSE_TEMPERATURE = 0.7;
+const QUESTION_MAX_TOKENS = 150;
+const SUMMARY_MAX_TOKENS = 500;
 
 function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
   return new Promise((resolve, reject) => {
@@ -94,8 +97,8 @@ export async function generateQuestion(
   const completion = await withTimeout(openai.chat.completions.create({
     model: getModel(),
     messages,
-    temperature: 0.7,
-    max_tokens: 150,
+    temperature: RESPONSE_TEMPERATURE,
+    max_tokens: QUESTION_MAX_TOKENS,
   }), OPENAI_TIMEOUT_MS);
 
   const question = completion.choices[0]?.message?.content?.trim();
@@ -134,8 +137,8 @@ export async function generateSummary(conversationHistory: Message[]): Promise<s
   const completion = await withTimeout(openai.chat.completions.create({
     model: getModel(),
     messages,
-    temperature: 0.7,
-    max_tokens: 500,
+    temperature: RESPONSE_TEMPERATURE,
+    max_tokens: SUMMARY_MAX_TOKENS,
   }), OPENAI_TIMEOUT_MS);
 
   const summary = completion.choices[0]?.message?.content?.trim();
