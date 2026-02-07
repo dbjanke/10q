@@ -1,20 +1,20 @@
 import { Conversation, Message, ConversationWithMessages } from '../types.js';
 import { getConversationStore } from '../stores/conversation.store.js';
 
-export function createConversation(title: string): Conversation {
-  return getConversationStore().createConversation(title);
+export function createConversation(userId: number, title: string): Conversation {
+  return getConversationStore().createConversation(userId, title);
 }
 
-export function getAllConversations(): Conversation[] {
-  return getConversationStore().getAllConversations();
+export function getAllConversations(userId: number): Conversation[] {
+  return getConversationStore().getAllConversations(userId);
 }
 
-export function getConversationById(id: number): ConversationWithMessages | null {
-  return getConversationStore().getConversationById(id);
+export function getConversationById(userId: number, id: number): ConversationWithMessages | null {
+  return getConversationStore().getConversationById(userId, id);
 }
 
-export function deleteConversation(id: number): boolean {
-  return getConversationStore().deleteConversation(id);
+export function deleteConversation(userId: number, id: number): boolean {
+  return getConversationStore().deleteConversation(userId, id);
 }
 
 export function saveMessage(

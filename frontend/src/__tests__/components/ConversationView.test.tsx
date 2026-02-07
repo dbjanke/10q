@@ -44,6 +44,14 @@ describe('ConversationView - Completion Flow', () => {
         vi.clearAllMocks();
     });
 
+    const currentUser = {
+        id: 1,
+        email: 'test@example.com',
+        name: 'Test User',
+        role: 'user' as const,
+        status: 'active' as const,
+    };
+
     it('should reload conversation when completion occurs', async () => {
         const user = userEvent.setup();
 
@@ -117,7 +125,7 @@ describe('ConversationView - Completion Flow', () => {
         // Render component
         render(
             <BrowserRouter>
-                <ConversationView />
+                <ConversationView currentUser={currentUser} onLogout={vi.fn()} />
             </BrowserRouter>
         );
 
@@ -192,7 +200,7 @@ describe('ConversationView - Completion Flow', () => {
 
         render(
             <BrowserRouter>
-                <ConversationView />
+                <ConversationView currentUser={currentUser} onLogout={vi.fn()} />
             </BrowserRouter>
         );
 
@@ -249,7 +257,7 @@ describe('ConversationView - Completion Flow', () => {
 
         render(
             <BrowserRouter>
-                <ConversationView />
+                <ConversationView currentUser={currentUser} onLogout={vi.fn()} />
             </BrowserRouter>
         );
 

@@ -20,6 +20,16 @@ describe('Routes - Validation', () => {
     beforeAll(() => {
         app = express();
         app.use(express.json());
+        app.use((req, _res, next) => {
+            req.user = {
+                id: 1,
+                email: 'test@example.com',
+                role: 'admin',
+                status: 'active',
+                createdAt: new Date(),
+            } as any;
+            next();
+        });
         app.use('/api', router);
     });
 

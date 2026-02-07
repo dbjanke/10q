@@ -2,10 +2,10 @@ import { Conversation, ConversationWithMessages, Message } from '../types.js';
 import { SQLiteConversationStore } from './sqlite/conversation.store.js';
 
 export interface ConversationStore {
-    createConversation(title: string): Conversation;
-    getAllConversations(): Conversation[];
-    getConversationById(id: number): ConversationWithMessages | null;
-    deleteConversation(id: number): boolean;
+    createConversation(userId: number, title: string): Conversation;
+    getAllConversations(userId: number): Conversation[];
+    getConversationById(userId: number, id: number): ConversationWithMessages | null;
+    deleteConversation(userId: number, id: number): boolean;
     saveMessage(
         conversationId: number,
         type: 'question' | 'response' | 'summary',

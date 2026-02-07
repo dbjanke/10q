@@ -7,6 +7,8 @@ import { MAX_TITLE_LENGTH, MAX_RESPONSE_LENGTH } from './config/validation.js';
 import { getConversationStore } from './stores/conversation.store.js';
 import { rateLimit } from './middleware/rateLimit.js';
 import { concurrencyLimit } from './middleware/concurrencyLimit.js';
+import { requireAuth } from './middleware/auth.js';
+import { parseIdParam } from './utils/params.js';
 
 const router = Router();
 
@@ -22,13 +24,6 @@ const responseRateLimit = rateLimit({
 const responseConcurrencyLimit = concurrencyLimit({
   max: MAX_CONCURRENT_SUBMISSIONS,
 });
-
-function parseIdParam(rawId: string | string[] | undefined): number {
-  if (Array.isArray(rawId)) {
-    return Number.parseInt(rawId[0] ?? '', 10);
-  }
-  return Number.parseInt(rawId ?? '', 10);
-}
 
 // Liveness probe
 router.get('/ping', (_req: Request, res: Response) => {
@@ -53,9 +48,12 @@ router.get('/deep-ping', (_req: Request, res: Response) => {
   }
 });
 
+router.use(requireAuth);
+
 // Create new conversation
 router.post('/conversations', async (req: Request, res: Response) => {
   try {
+    const userId = req.user!.id;
     const { title } = req.body as CreateConversationRequest;
 
     if (!title || title.trim().length === 0) {
@@ -69,7 +67,7 @@ router.post('/conversations', async (req: Request, res: Response) => {
       });
     }
 
-    const conversation = conversationService.createConversation(title.trim());
+    const conversation = conversationService.createConversation(userId, title.trim());
 
     // Generate first question
     const firstQuestion = await openaiService.generateQuestion([], 1);
@@ -98,7 +96,8 @@ router.post('/conversations', async (req: Request, res: Response) => {
 // Get all conversations
 router.get('/conversations', (req: Request, res: Response) => {
   try {
-    const conversations = conversationService.getAllConversations();
+    const userId = req.user!.id;
+    const conversations = conversationService.getAllConversations(userId);
     res.json(conversations);
   } catch (error) {
     console.error('Error fetching conversations:', error);
@@ -109,13 +108,14 @@ router.get('/conversations', (req: Request, res: Response) => {
 // Get conversation by ID
 router.get('/conversations/:id', (req: Request, res: Response) => {
   try {
+    const userId = req.user!.id;
     const id = parseIdParam(req.params.id);
 
     if (isNaN(id)) {
       return res.status(400).json({ error: 'Invalid conversation ID' });
     }
 
-    const conversation = conversationService.getConversationById(id);
+    const conversation = conversationService.getConversationById(userId, id);
 
     if (!conversation) {
       return res.status(404).json({ error: 'Conversation not found' });
@@ -131,13 +131,14 @@ router.get('/conversations/:id', (req: Request, res: Response) => {
 // Delete conversation
 router.delete('/conversations/:id', (req: Request, res: Response) => {
   try {
+    const userId = req.user!.id;
     const id = parseIdParam(req.params.id);
 
     if (isNaN(id)) {
       return res.status(400).json({ error: 'Invalid conversation ID' });
     }
 
-    const deleted = conversationService.deleteConversation(id);
+    const deleted = conversationService.deleteConversation(userId, id);
 
     if (!deleted) {
       return res.status(404).json({ error: 'Conversation not found' });
@@ -157,6 +158,7 @@ router.post(
   responseConcurrencyLimit,
   async (req: Request, res: Response) => {
     try {
+      const userId = req.user!.id;
       const id = parseIdParam(req.params.id);
       const { response } = req.body as SubmitResponseRequest;
 
@@ -175,7 +177,7 @@ router.post(
         });
       }
 
-      const conversation = conversationService.getConversationById(id);
+      const conversation = conversationService.getConversationById(userId, id);
 
       if (!conversation) {
         return res.status(404).json({ error: 'Conversation not found' });
@@ -242,13 +244,14 @@ router.post(
 // Export conversation to markdown
 router.get('/conversations/:id/export', (req: Request, res: Response) => {
   try {
+    const userId = req.user!.id;
     const id = parseIdParam(req.params.id);
 
     if (isNaN(id)) {
       return res.status(400).json({ error: 'Invalid conversation ID' });
     }
 
-    const conversation = conversationService.getConversationById(id);
+    const conversation = conversationService.getConversationById(userId, id);
 
     if (!conversation) {
       return res.status(404).json({ error: 'Conversation not found' });

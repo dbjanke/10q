@@ -14,6 +14,7 @@ backend/data/*.db-journal
 dist/
 */dist/
 build/
+*.tsbuildinfo
 
 # Logs
 *.log

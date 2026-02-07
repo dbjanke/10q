@@ -7,6 +7,17 @@ export interface Conversation {
   currentQuestionNumber: number;
 }
 
+export interface User {
+  id: number;
+  email: string;
+  name?: string;
+  avatarUrl?: string;
+  role: 'admin' | 'user';
+  status: 'invited' | 'active' | 'disabled';
+  createdAt: Date;
+  lastLoginAt?: Date;
+}
+
 export interface Message {
   id: number;
   conversationId: number;

@@ -4,6 +4,8 @@ This repo favors a modular design with clear boundaries. Example: SQLite-specifi
 
 ## Principles
 - Prefer simple, composable designs (Hickey’s “Simple Made Easy”). Separate policy (core logic) from implementation details (IO, DB, 3rd‑party APIs).
+- After large changes or error-heavy debugging, pause to review the overall shape of the solution. Look for hacks/kludges, mismatches between structure and domain use cases, and opportunities to simplify or refactor before shipping.
+- Resolve warnings and errors promptly; don’t let them accumulate. If a warning is truly benign, document the reasoning and use an explicit ignore directive.
 - Always consider automated tests when adding/changing functionality; add or adjust tests to match behavior changes.
 - Build for observability: keep health endpoints like /ping and /deep-ping, and make it easy to diagnose errors and system status over time.
 - Be mindful of data models and query patterns; keep storage efficient and avoid unnecessary complexity or performance regressions.

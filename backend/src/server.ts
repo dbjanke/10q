@@ -2,20 +2,29 @@ import express from 'express';
 import cors from 'cors';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import * as dotenv from 'dotenv';
-import { initializeDatabase } from './config/database.js';
+import session from 'express-session';
+import passport from 'passport';
+import { initializeDatabase, getDatabase } from './config/database.js';
+import { loadEnv, getCookieSecure, getFrontendUrl, getNodeEnv, getSessionSecret } from './config/env.js';
 import routes from './routes.js';
+import authRoutes from './routes/auth.js';
+import adminRoutes from './routes/admin.js';
+import { configurePassport } from './auth/passport.js';
+// @ts-expect-error - package does not ship types
+import SQLiteStoreFactory from 'better-sqlite3-session-store';
 
 // ES module equivalent of __dirname
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// Load .env from root directory
-dotenv.config({ path: join(__dirname, '../../.env') });
+loadEnv();
 
 const app = express();
 const PORT = process.env.PORT || 3001;
-const NODE_ENV = process.env.NODE_ENV || 'development';
+const NODE_ENV = getNodeEnv();
+const FRONTEND_URL = getFrontendUrl();
+const COOKIE_SECURE = getCookieSecure();
+const SESSION_SECRET = getSessionSecret();
 
 // Initialize database
 try {
@@ -26,9 +35,41 @@ try {
 }
 
 // Middleware
-app.use(cors());
+app.set('trust proxy', 1);
+app.use(
+  cors({
+    origin: FRONTEND_URL,
+    credentials: true,
+  })
+);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+const SQLiteStore = SQLiteStoreFactory(session);
+app.use(
+  session({
+    store: new SQLiteStore({
+      client: getDatabase(),
+      expired: {
+        clear: true,
+        intervalMs: 15 * 60 * 1000,
+      },
+    }),
+    secret: SESSION_SECRET,
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: COOKIE_SECURE,
+      maxAge: 1000 * 60 * 60 * 24 * 7,
+    },
+  })
+);
+
+configurePassport();
+app.use(passport.initialize());
+app.use(passport.session());
 
 // Request logging in development
 if (NODE_ENV === 'development') {
@@ -39,6 +80,8 @@ if (NODE_ENV === 'development') {
 }
 
 // API routes
+app.use('/api/auth', authRoutes);
+app.use('/api/admin', adminRoutes);
 app.use('/api', routes);
 
 // Serve frontend static files in production

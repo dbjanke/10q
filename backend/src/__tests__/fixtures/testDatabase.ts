@@ -31,10 +31,18 @@ export function closeTestDatabase(db: Database.Database): void {
  * Seed test database with sample data
  */
 export function seedTestDatabase(db: Database.Database) {
+    const user = db
+        .prepare("INSERT INTO users (email, name, role, status) VALUES (?, ?, 'user', 'active')")
+        .run('seed@example.com', 'Seed User');
+
+    const userId = Number(user.lastInsertRowid);
+
     // Insert a test conversation
     const conversation = db
-        .prepare('INSERT INTO conversations (title, current_question_number) VALUES (?, ?)')
-        .run('Test conversation', 1);
+        .prepare(
+            'INSERT INTO conversations (user_id, title, current_question_number) VALUES (?, ?, ?)'
+        )
+        .run(userId, 'Test conversation', 1);
 
     const conversationId = conversation.lastInsertRowid;
 
@@ -43,5 +51,5 @@ export function seedTestDatabase(db: Database.Database) {
         'INSERT INTO messages (conversation_id, type, content, question_number) VALUES (?, ?, ?, ?)'
     ).run(conversationId, 'question', 'What brings you here?', 1);
 
-    return { conversationId };
+    return { conversationId, userId };
 }

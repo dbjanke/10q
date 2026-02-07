@@ -1,10 +1,16 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Conversation } from '../types';
+import { Conversation, User } from '../types';
 import * as api from '../hooks/useApi';
 import { MAX_TITLE_LENGTH } from '../config/validation';
+import AppHeader from './AppHeader';
 
-export default function Dashboard() {
+interface DashboardProps {
+  currentUser: User;
+  onLogout: () => void;
+}
+
+export default function Dashboard({ currentUser, onLogout }: DashboardProps) {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -73,10 +79,12 @@ export default function Dashboard() {
   return (
     <div className="page">
       <div className="container">
-        <div className="toolbar">
+        <AppHeader user={currentUser} onLogout={onLogout} />
+
+        <div className="toolbar" style={{ marginTop: 12 }}>
           <div>
-            <h1 className="section-title">10Q</h1>
-            <p className="section-subtitle">Guided thinking through 10 questions</p>
+            <h2 style={{ fontSize: 22, fontWeight: 700 }}>Your conversations</h2>
+            <p className="section-subtitle">Pick up where you left off</p>
           </div>
           <button
             onClick={() => {

@@ -27,6 +27,7 @@ describe('useApi', () => {
             expect(global.fetch).toHaveBeenCalledWith('/api/conversations', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
                 body: JSON.stringify({ title: 'Test Topic' }),
             });
 
@@ -54,6 +55,7 @@ describe('useApi', () => {
 
             expect(global.fetch).toHaveBeenCalledWith('/api/conversations', {
                 headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
             });
 
             expect(result).toEqual(mockConversations);
@@ -81,6 +83,7 @@ describe('useApi', () => {
 
             expect(global.fetch).toHaveBeenCalledWith('/api/conversations/1', {
                 headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
             });
 
             expect(result).toEqual(mockConversationWithMessages);
@@ -105,6 +108,7 @@ describe('useApi', () => {
             expect(global.fetch).toHaveBeenCalledWith('/api/conversations/1', {
                 method: 'DELETE',
                 headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
             });
 
             expect(result).toBeNull();
@@ -132,6 +136,7 @@ describe('useApi', () => {
             expect(global.fetch).toHaveBeenCalledWith('/api/conversations/1/response', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
                 body: JSON.stringify({ response: 'My thoughtful response' }),
             });
 

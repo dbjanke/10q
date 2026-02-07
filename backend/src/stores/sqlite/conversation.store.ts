@@ -18,43 +18,45 @@ function withTiming<T>(label: string, fn: () => T): T {
 }
 
 export class SQLiteConversationStore implements ConversationStore {
-    createConversation(title: string): Conversation {
+    createConversation(userId: number, title: string): Conversation {
         const db = getDatabase();
 
         const result = withTiming('conversations.insert', () =>
             db
-                .prepare('INSERT INTO conversations (title, current_question_number) VALUES (?, 0)')
-                .run(title)
+                .prepare(
+                    'INSERT INTO conversations (user_id, title, current_question_number) VALUES (?, ?, 0)'
+                )
+                .run(userId, title)
         );
 
         const conversation = withTiming('conversations.getById', () =>
             db
-                .prepare('SELECT * FROM conversations WHERE id = ?')
-                .get(result.lastInsertRowid) as any
+                .prepare('SELECT * FROM conversations WHERE id = ? AND user_id = ?')
+                .get(result.lastInsertRowid, userId) as any
         );
 
         return mapConversation(conversation);
     }
 
-    getAllConversations(): Conversation[] {
+    getAllConversations(userId: number): Conversation[] {
         const db = getDatabase();
 
         const rows = withTiming('conversations.getAll', () =>
             db
-                .prepare('SELECT * FROM conversations ORDER BY created_at DESC')
-                .all() as any[]
+                .prepare('SELECT * FROM conversations WHERE user_id = ? ORDER BY created_at DESC')
+                .all(userId) as any[]
         );
 
         return rows.map(mapConversation);
     }
 
-    getConversationById(id: number): ConversationWithMessages | null {
+    getConversationById(userId: number, id: number): ConversationWithMessages | null {
         const db = getDatabase();
 
         const conversation = withTiming('conversations.getById', () =>
             db
-                .prepare('SELECT * FROM conversations WHERE id = ?')
-                .get(id) as any
+                .prepare('SELECT * FROM conversations WHERE id = ? AND user_id = ?')
+                .get(id, userId) as any
         );
 
         if (!conversation) {
@@ -73,11 +75,11 @@ export class SQLiteConversationStore implements ConversationStore {
         };
     }
 
-    deleteConversation(id: number): boolean {
+    deleteConversation(userId: number, id: number): boolean {
         const db = getDatabase();
 
         const result = withTiming('conversations.delete', () =>
-            db.prepare('DELETE FROM conversations WHERE id = ?').run(id)
+            db.prepare('DELETE FROM conversations WHERE id = ? AND user_id = ?').run(id, userId)
         );
 
         return result.changes > 0;

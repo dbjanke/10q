@@ -27,6 +27,18 @@ vi.mock('../../config/database.js', () => ({
 // Import after mocking
 const conversationService = await import('../../services/conversation.service.js');
 
+let userCounter = 0;
+
+function createTestUser(db: Database.Database): number {
+    userCounter += 1;
+    const result = db
+        .prepare(
+            "INSERT INTO users (email, name, role, status) VALUES (?, ?, 'user', 'active')"
+        )
+        .run(`test${userCounter}@example.com`, 'Test User');
+    return Number(result.lastInsertRowid);
+}
+
 describe('conversation.service', () => {
     beforeEach(() => {
         mockDb = createTestDatabase();
@@ -49,8 +61,9 @@ describe('conversation.service', () => {
 
     describe('createConversation', () => {
         it('should create a new conversation with a title', () => {
+            const userId = createTestUser(mockDb);
             const title = 'Test Conversation';
-            const conversation = conversationService.createConversation(title);
+            const conversation = conversationService.createConversation(userId, title);
 
             expect(conversation).toBeDefined();
             expect(conversation.id).toBeGreaterThan(0);
@@ -61,8 +74,9 @@ describe('conversation.service', () => {
         });
 
         it('should create multiple conversations with unique IDs', () => {
-            const conv1 = conversationService.createConversation('First');
-            const conv2 = conversationService.createConversation('Second');
+            const userId = createTestUser(mockDb);
+            const conv1 = conversationService.createConversation(userId, 'First');
+            const conv2 = conversationService.createConversation(userId, 'Second');
 
             expect(conv1.id).not.toBe(conv2.id);
             expect(conv1.title).toBe('First');
@@ -72,16 +86,18 @@ describe('conversation.service', () => {
 
     describe('getAllConversations', () => {
         it('should return empty array when no conversations exist', () => {
-            const conversations = conversationService.getAllConversations();
+            const userId = createTestUser(mockDb);
+            const conversations = conversationService.getAllConversations(userId);
             expect(conversations).toEqual([]);
         });
 
         it('should return all conversations', () => {
-            conversationService.createConversation('First');
-            conversationService.createConversation('Second');
-            conversationService.createConversation('Third');
+            const userId = createTestUser(mockDb);
+            conversationService.createConversation(userId, 'First');
+            conversationService.createConversation(userId, 'Second');
+            conversationService.createConversation(userId, 'Third');
 
-            const conversations = conversationService.getAllConversations();
+            const conversations = conversationService.getAllConversations(userId);
 
             expect(conversations).toHaveLength(3);
             const titles = conversations.map(c => c.title);
@@ -93,11 +109,12 @@ describe('conversation.service', () => {
 
     describe('getConversationById', () => {
         it('should return conversation with messages', () => {
-            const created = conversationService.createConversation('Test');
+            const userId = createTestUser(mockDb);
+            const created = conversationService.createConversation(userId, 'Test');
             conversationService.saveMessage(created.id, 'question', 'What is this?', 1);
             conversationService.saveMessage(created.id, 'response', 'An answer', 1);
 
-            const conversation = conversationService.getConversationById(created.id);
+            const conversation = conversationService.getConversationById(userId, created.id);
 
             expect(conversation).toBeDefined();
             expect(conversation?.id).toBe(created.id);
@@ -107,28 +124,31 @@ describe('conversation.service', () => {
         });
 
         it('should return null for non-existent conversation', () => {
-            const conversation = conversationService.getConversationById(999);
+            const userId = createTestUser(mockDb);
+            const conversation = conversationService.getConversationById(userId, 999);
             expect(conversation).toBeNull();
         });
     });
 
     describe('deleteConversation', () => {
         it('should delete conversation and return true', () => {
-            const conversation = conversationService.createConversation('To Delete');
-            const deleted = conversationService.deleteConversation(conversation.id);
+            const userId = createTestUser(mockDb);
+            const conversation = conversationService.createConversation(userId, 'To Delete');
+            const deleted = conversationService.deleteConversation(userId, conversation.id);
 
             expect(deleted).toBe(true);
 
-            const found = conversationService.getConversationById(conversation.id);
+            const found = conversationService.getConversationById(userId, conversation.id);
             expect(found).toBeNull();
         });
 
         it('should cascade delete associated messages', () => {
-            const conversation = conversationService.createConversation('Test');
+            const userId = createTestUser(mockDb);
+            const conversation = conversationService.createConversation(userId, 'Test');
             conversationService.saveMessage(conversation.id, 'question', 'Question?', 1);
             conversationService.saveMessage(conversation.id, 'response', 'Response', 1);
 
-            conversationService.deleteConversation(conversation.id);
+            conversationService.deleteConversation(userId, conversation.id);
 
             // Verify messages were deleted
             const messages = conversationService.getConversationMessages(conversation.id);
@@ -136,14 +156,16 @@ describe('conversation.service', () => {
         });
 
         it('should return false for non-existent conversation', () => {
-            const deleted = conversationService.deleteConversation(999);
+            const userId = createTestUser(mockDb);
+            const deleted = conversationService.deleteConversation(userId, 999);
             expect(deleted).toBe(false);
         });
     });
 
     describe('saveMessage', () => {
         it('should save a question message', () => {
-            const conversation = conversationService.createConversation('Test');
+            const userId = createTestUser(mockDb);
+            const conversation = conversationService.createConversation(userId, 'Test');
             const message = conversationService.saveMessage(
                 conversation.id,
                 'question',
@@ -160,7 +182,8 @@ describe('conversation.service', () => {
         });
 
         it('should save a response message', () => {
-            const conversation = conversationService.createConversation('Test');
+            const userId = createTestUser(mockDb);
+            const conversation = conversationService.createConversation(userId, 'Test');
             const message = conversationService.saveMessage(
                 conversation.id,
                 'response',
@@ -173,7 +196,8 @@ describe('conversation.service', () => {
         });
 
         it('should save a summary message without question number', () => {
-            const conversation = conversationService.createConversation('Test');
+            const userId = createTestUser(mockDb);
+            const conversation = conversationService.createConversation(userId, 'Test');
             const message = conversationService.saveMessage(
                 conversation.id,
                 'summary',
@@ -187,19 +211,21 @@ describe('conversation.service', () => {
 
     describe('updateConversationProgress', () => {
         it('should update question number', () => {
-            const conversation = conversationService.createConversation('Test');
+            const userId = createTestUser(mockDb);
+            const conversation = conversationService.createConversation(userId, 'Test');
             conversationService.updateConversationProgress(conversation.id, 5);
 
-            const updated = conversationService.getConversationById(conversation.id);
+            const updated = conversationService.getConversationById(userId, conversation.id);
             expect(updated?.currentQuestionNumber).toBe(5);
             expect(updated?.completed).toBe(false);
         });
 
         it('should mark conversation as completed', () => {
-            const conversation = conversationService.createConversation('Test');
+            const userId = createTestUser(mockDb);
+            const conversation = conversationService.createConversation(userId, 'Test');
             conversationService.updateConversationProgress(conversation.id, 10, true);
 
-            const updated = conversationService.getConversationById(conversation.id);
+            const updated = conversationService.getConversationById(userId, conversation.id);
             expect(updated?.currentQuestionNumber).toBe(10);
             expect(updated?.completed).toBe(true);
         });
@@ -207,12 +233,13 @@ describe('conversation.service', () => {
 
     describe('updateConversationSummary', () => {
         it('should update summary and mark as completed', () => {
-            const conversation = conversationService.createConversation('Test');
+            const userId = createTestUser(mockDb);
+            const conversation = conversationService.createConversation(userId, 'Test');
             const summary = 'This is a summary of the conversation';
 
             conversationService.updateConversationSummary(conversation.id, summary);
 
-            const updated = conversationService.getConversationById(conversation.id);
+            const updated = conversationService.getConversationById(userId, conversation.id);
             expect(updated?.summary).toBe(summary);
             expect(updated?.completed).toBe(true);
         });

@@ -1,13 +1,19 @@
 import { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ConversationWithMessages, Message } from '../types';
+import { ConversationWithMessages, Message, User } from '../types';
 import * as api from '../hooks/useApi';
 import QuestionCard from './QuestionCard';
 import ResponseInput from './ResponseInput';
 import Summary from './Summary';
 import LoadingIndicator from './LoadingIndicator';
+import AppHeader from './AppHeader';
 
-export default function ConversationView() {
+interface ConversationViewProps {
+  currentUser: User;
+  onLogout: () => void;
+}
+
+export default function ConversationView({ currentUser, onLogout }: ConversationViewProps) {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [conversation, setConversation] = useState<ConversationWithMessages | null>(null);
@@ -131,6 +137,8 @@ export default function ConversationView() {
   return (
     <div className="page">
       <div className="container" style={{ maxWidth: 840 }}>
+        <AppHeader user={currentUser} onLogout={onLogout} />
+
         {/* Top scroll anchor */}
         <div ref={topRef} />
 

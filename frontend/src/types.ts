@@ -20,6 +20,15 @@ export interface ConversationWithMessages extends Conversation {
   messages: Message[];
 }
 
+export interface User {
+  id: number;
+  email: string;
+  name?: string;
+  avatarUrl?: string;
+  role: 'admin' | 'user';
+  status: 'invited' | 'active' | 'disabled';
+}
+
 export interface CreateConversationResponse {
   conversation: Conversation;
   firstQuestion: Message;

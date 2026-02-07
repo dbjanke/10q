@@ -3,6 +3,7 @@ import {
   ConversationWithMessages,
   CreateConversationResponse,
   ResponseSubmissionResult,
+  User,
 } from '../types';
 
 const API_BASE = '/api';
@@ -16,6 +17,7 @@ async function fetchApi<T>(
       'Content-Type': 'application/json',
       ...options?.headers,
     },
+    credentials: 'include',
     ...options,
   });
 
@@ -30,6 +32,15 @@ async function fetchApi<T>(
   }
 
   return response.json();
+}
+
+export async function getCurrentUser(): Promise<User> {
+  const response = await fetchApi<{ user: User }>('/auth/me');
+  return response.user;
+}
+
+export async function logout(): Promise<void> {
+  await fetchApi('/auth/logout', { method: 'POST' });
 }
 
 export async function createConversation(title: string): Promise<CreateConversationResponse> {
@@ -65,4 +76,29 @@ export async function submitResponse(
 
 export function getExportUrl(conversationId: number): string {
   return `${API_BASE}/conversations/${conversationId}/export`;
+}
+
+export async function getUsers(): Promise<User[]> {
+  return fetchApi<User[]>('/admin/users');
+}
+
+export async function inviteUser(email: string, role: 'admin' | 'user' = 'user'): Promise<User> {
+  return fetchApi<User>('/admin/users', {
+    method: 'POST',
+    body: JSON.stringify({ email, role }),
+  });
+}
+
+export async function updateUser(
+  id: number,
+  updates: Partial<Pick<User, 'role' | 'status'>>
+): Promise<User> {
+  return fetchApi<User>(`/admin/users/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(updates),
+  });
+}
+
+export async function deleteUser(id: number): Promise<void> {
+  await fetchApi(`/admin/users/${id}`, { method: 'DELETE' });
 }
