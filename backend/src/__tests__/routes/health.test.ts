@@ -3,10 +3,21 @@ import request from 'supertest';
 import express from 'express';
 import router from '../../routes.js';
 import { getConversationStore } from '../../stores/conversation.store.js';
+import * as openaiService from '../../services/openai.service.js';
 
 vi.mock('../../stores/conversation.store.js', () => ({
     getConversationStore: vi.fn(),
 }));
+
+vi.mock('../../services/openai.service.js', async () => {
+    const actual = await vi.importActual<typeof import('../../services/openai.service.js')>(
+        '../../services/openai.service.js'
+    );
+    return {
+        ...actual,
+        checkOpenAiHealth: vi.fn(),
+    };
+});
 
 describe('Routes - Health', () => {
     let app: express.Application;
@@ -39,6 +50,10 @@ describe('Routes - Health', () => {
         vi.mocked(getConversationStore).mockReturnValue({
             checkHealth: vi.fn(),
         } as any);
+        vi.mocked(openaiService.checkOpenAiHealth).mockResolvedValue({
+            ok: true,
+            latencyMs: 5,
+        });
 
         const response = await request(app).get('/api/deep-ping');
 
@@ -53,6 +68,10 @@ describe('Routes - Health', () => {
                 throw new Error('DB down');
             }),
         } as any);
+        vi.mocked(openaiService.checkOpenAiHealth).mockResolvedValue({
+            ok: true,
+            latencyMs: 5,
+        });
 
         const response = await request(app).get('/api/deep-ping');
 

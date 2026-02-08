@@ -75,7 +75,8 @@ export function getCookieSecure(): boolean {
 }
 
 export function getLogLevel(): string {
-    return process.env.LOG_LEVEL || (getNodeEnv() === 'production' ? 'info' : 'debug');
+    const nodeEnv = process.env.NODE_ENV;
+    return process.env.LOG_LEVEL || (nodeEnv === 'production' ? 'info' : 'debug');
 }
 
 export function isGoogleConfigured(): boolean {

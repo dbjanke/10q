@@ -49,6 +49,24 @@ Engineering principles and architectural preferences are documented in [AGENTS.m
 - No external data storage beyond OpenAI API calls
 - Access is restricted to allowlisted Google accounts; admins manage the allowlist
 
+## Observability
+
+### Metrics
+
+The backend exposes a Prometheus-compatible metrics endpoint at `/metrics`. If `METRICS_TOKEN` is set, the endpoint requires an `Authorization: Bearer <token>` header.
+
+**Local check:**
+- `curl http://localhost:3001/metrics`
+
+**With token:**
+- `curl -H "Authorization: Bearer $METRICS_TOKEN" http://localhost:3001/metrics`
+
+### Suggested alerts
+
+- **5xx rate**: alert when 5xx responses spike over baseline.
+- **Latency**: alert when p95 request latency exceeds your SLA.
+- **Deep ping**: alert if `/api/deep-ping` fails.
+
 ## Troubleshooting
 
 **"OpenAI API key not set"**  

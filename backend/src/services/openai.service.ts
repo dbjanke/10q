@@ -44,6 +44,27 @@ function getModel(): string {
   return process.env.OPENAI_MODEL || 'gpt-4o';
 }
 
+export async function checkOpenAiHealth(): Promise<{
+  ok: boolean;
+  latencyMs: number;
+  error?: string;
+}> {
+  const start = Date.now();
+
+  if (!process.env.OPENAI_API_KEY) {
+    return { ok: false, latencyMs: Date.now() - start, error: 'not_configured' };
+  }
+
+  try {
+    const openai = getOpenAIClient();
+    await withTimeout(openai.models.list(), OPENAI_TIMEOUT_MS);
+    return { ok: true, latencyMs: Date.now() - start };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'unknown_error';
+    return { ok: false, latencyMs: Date.now() - start, error: message };
+  }
+}
+
 export async function generateQuestion(
   conversationHistory: Message[],
   questionNumber: number

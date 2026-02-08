@@ -14,6 +14,7 @@ import { configurePassport } from './auth/passport.js';
 import { csrfProtection } from './middleware/csrf.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { logger, requestLogger } from './utils/logger.js';
+import { metricsEndpoint, metricsMiddleware } from './metrics.js';
 // @ts-expect-error - package does not ship types
 import SQLiteStoreFactory from 'better-sqlite3-session-store';
 
@@ -56,10 +57,11 @@ app.use(
 app.use(requestLogger);
 app.use((req, res, next) => {
   if (req.id) {
-    res.setHeader('X-Request-Id', req.id);
+    res.setHeader('X-Request-Id', String(req.id));
   }
   next();
 });
+app.use(metricsMiddleware);
 app.use(
   helmet({
     contentSecurityPolicy: {
@@ -125,6 +127,8 @@ if (NODE_ENV === 'development') {
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api', routes);
+
+app.get('/metrics', metricsEndpoint);
 
 // Serve frontend static files in production
 if (NODE_ENV === 'production') {

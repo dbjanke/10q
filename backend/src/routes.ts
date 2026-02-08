@@ -35,20 +35,40 @@ router.get('/ping', (_req: Request, res: Response) => {
 });
 
 // Readiness probe (checks dependencies)
-router.get('/deep-ping', (_req: Request, res: Response) => {
+router.get('/deep-ping', async (_req: Request, res: Response) => {
   const start = Date.now();
 
   try {
     const store = getConversationStore();
     store.checkHealth();
 
-    res.json({
-      ok: true,
+    const openaiHealth = await openaiService.checkOpenAiHealth();
+    const ok = openaiHealth.ok;
+    const hasMetricsAuth = Boolean(process.env.METRICS_TOKEN);
+
+    return res.status(ok ? 200 : 503).json({
+      ok,
+      timestamp: new Date().toISOString(),
+      uptimeMs: Math.round(process.uptime() * 1000),
       latencyMs: Date.now() - start,
+      dependencies: {
+        database: { ok: true },
+        openai: openaiHealth,
+        metrics: { ok: true, authRequired: hasMetricsAuth },
+      },
     });
   } catch (error) {
     logger.error({ err: error }, 'Deep ping failed');
-    res.status(503).json({ ok: false });
+    return res.status(503).json({
+      ok: false,
+      timestamp: new Date().toISOString(),
+      uptimeMs: Math.round(process.uptime() * 1000),
+      latencyMs: Date.now() - start,
+      dependencies: {
+        database: { ok: false },
+        metrics: { ok: Boolean(process.env.METRICS_TOKEN), authRequired: Boolean(process.env.METRICS_TOKEN) },
+      },
+    });
   }
 });
 
