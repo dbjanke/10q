@@ -11,17 +11,64 @@ import {
 
 const API_BASE = '/api';
 
+let csrfToken: string | null = null;
+let csrfPromise: Promise<string> | null = null;
+
+async function fetchCsrfToken(): Promise<string> {
+  if (csrfToken) {
+    return csrfToken;
+  }
+
+  if (!csrfPromise) {
+    csrfPromise = fetch(`${API_BASE}/auth/csrf`, {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      credentials: 'include',
+    })
+      .then(async (response) => {
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+        const data = (await response.json()) as { csrfToken: string };
+        csrfToken = data.csrfToken;
+        return csrfToken;
+      })
+      .finally(() => {
+        csrfPromise = null;
+      });
+  }
+
+  return csrfPromise;
+}
+
+function isMutatingMethod(method?: string): boolean {
+  if (!method) {
+    return false;
+  }
+  return !['GET', 'HEAD', 'OPTIONS'].includes(method.toUpperCase());
+}
+
 async function fetchApi<T>(
   endpoint: string,
   options?: RequestInit
 ): Promise<T> {
+  const method = options?.method ?? 'GET';
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(options?.headers as Record<string, string> | undefined),
+  };
+
+  if (isMutatingMethod(method)) {
+    const token = await fetchCsrfToken();
+    headers['X-CSRF-Token'] = token;
+  }
+
   const response = await fetch(`${API_BASE}${endpoint}`, {
-    headers: {
-      'Content-Type': 'application/json',
-      ...options?.headers,
-    },
+    headers,
     credentials: 'include',
     ...options,
+    method,
   });
 
   if (!response.ok) {
@@ -40,6 +87,11 @@ async function fetchApi<T>(
 export async function getCurrentUser(): Promise<User> {
   const response = await fetchApi<{ user: User }>('/auth/me');
   return response.user;
+}
+
+export function resetCsrfTokenForTests(): void {
+  csrfToken = null;
+  csrfPromise = null;
 }
 
 export async function logout(): Promise<void> {

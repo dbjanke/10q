@@ -30,6 +30,7 @@ export function configurePassport(): void {
                 clientID: clientId,
                 clientSecret: clientSecret,
                 callbackURL: callbackUrl,
+                state: true,
             },
             (
                 _accessToken: string,

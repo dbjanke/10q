@@ -14,19 +14,24 @@ describe('useApi', () => {
     beforeEach(() => {
         // Reset fetch mock before each test
         global.fetch = vi.fn();
+        api.resetCsrfTokenForTests();
     });
 
     describe('createConversation', () => {
         it('should create a conversation and return first question', async () => {
-            (global.fetch as any).mockResolvedValueOnce(
-                mockFetchSuccess(mockCreateConversationResponse)
-            );
+            (global.fetch as any)
+                .mockResolvedValueOnce(mockFetchSuccess({ csrfToken: 'test-token' }))
+                .mockResolvedValueOnce(mockFetchSuccess(mockCreateConversationResponse));
 
             const result = await api.createConversation('Test Topic');
 
-            expect(global.fetch).toHaveBeenCalledWith('/api/conversations', {
-                method: 'POST',
+            expect(global.fetch).toHaveBeenNthCalledWith(1, '/api/auth/csrf', {
                 headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+            });
+            expect(global.fetch).toHaveBeenNthCalledWith(2, '/api/conversations', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': 'test-token' },
                 credentials: 'include',
                 body: JSON.stringify({ title: 'Test Topic' }),
             });
@@ -37,9 +42,9 @@ describe('useApi', () => {
         });
 
         it('should handle errors when creating conversation', async () => {
-            (global.fetch as any).mockResolvedValueOnce(
-                mockFetchError('Title is required', 400)
-            );
+            (global.fetch as any)
+                .mockResolvedValueOnce(mockFetchSuccess({ csrfToken: 'test-token' }))
+                .mockResolvedValueOnce(mockFetchError('Title is required', 400));
 
             await expect(api.createConversation('')).rejects.toThrow('Title is required');
         });
@@ -56,6 +61,7 @@ describe('useApi', () => {
             expect(global.fetch).toHaveBeenCalledWith('/api/conversations', {
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
+                method: 'GET',
             });
 
             expect(result).toEqual(mockConversations);
@@ -84,6 +90,7 @@ describe('useApi', () => {
             expect(global.fetch).toHaveBeenCalledWith('/api/conversations/1', {
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
+                method: 'GET',
             });
 
             expect(result).toEqual(mockConversationWithMessages);
@@ -101,13 +108,19 @@ describe('useApi', () => {
 
     describe('deleteConversation', () => {
         it('should delete a conversation', async () => {
-            (global.fetch as any).mockResolvedValueOnce(mockFetchNoContent());
+            (global.fetch as any)
+                .mockResolvedValueOnce(mockFetchSuccess({ csrfToken: 'test-token' }))
+                .mockResolvedValueOnce(mockFetchNoContent());
 
             const result = await api.deleteConversation(1);
 
-            expect(global.fetch).toHaveBeenCalledWith('/api/conversations/1', {
-                method: 'DELETE',
+            expect(global.fetch).toHaveBeenNthCalledWith(1, '/api/auth/csrf', {
                 headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+            });
+            expect(global.fetch).toHaveBeenNthCalledWith(2, '/api/conversations/1', {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': 'test-token' },
                 credentials: 'include',
             });
 
@@ -115,9 +128,9 @@ describe('useApi', () => {
         });
 
         it('should handle delete errors', async () => {
-            (global.fetch as any).mockResolvedValueOnce(
-                mockFetchError('Conversation not found', 404)
-            );
+            (global.fetch as any)
+                .mockResolvedValueOnce(mockFetchSuccess({ csrfToken: 'test-token' }))
+                .mockResolvedValueOnce(mockFetchError('Conversation not found', 404));
 
             await expect(api.deleteConversation(999)).rejects.toThrow(
                 'Conversation not found'
@@ -127,15 +140,19 @@ describe('useApi', () => {
 
     describe('regenerateSummary', () => {
         it('should post to regenerate summary endpoint', async () => {
-            (global.fetch as any).mockResolvedValueOnce(
-                mockFetchSuccess({ summary: 'Updated summary' })
-            );
+            (global.fetch as any)
+                .mockResolvedValueOnce(mockFetchSuccess({ csrfToken: 'test-token' }))
+                .mockResolvedValueOnce(mockFetchSuccess({ summary: 'Updated summary' }));
 
             const result = await api.regenerateSummary(1);
 
-            expect(global.fetch).toHaveBeenCalledWith('/api/conversations/1/regenerate-summary', {
-                method: 'POST',
+            expect(global.fetch).toHaveBeenNthCalledWith(1, '/api/auth/csrf', {
                 headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+            });
+            expect(global.fetch).toHaveBeenNthCalledWith(2, '/api/conversations/1/regenerate-summary', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': 'test-token' },
                 credentials: 'include',
             });
 
@@ -145,24 +162,30 @@ describe('useApi', () => {
 
     describe('regenerateQuestion', () => {
         it('should post to regenerate question endpoint', async () => {
-            (global.fetch as any).mockResolvedValueOnce(
-                mockFetchSuccess({
-                    question: {
-                        id: 1,
-                        conversationId: 1,
-                        type: 'question',
-                        content: 'Updated question',
-                        questionNumber: 2,
-                        createdAt: new Date().toISOString(),
-                    },
-                })
-            );
+            (global.fetch as any)
+                .mockResolvedValueOnce(mockFetchSuccess({ csrfToken: 'test-token' }))
+                .mockResolvedValueOnce(
+                    mockFetchSuccess({
+                        question: {
+                            id: 1,
+                            conversationId: 1,
+                            type: 'question',
+                            content: 'Updated question',
+                            questionNumber: 2,
+                            createdAt: new Date().toISOString(),
+                        },
+                    })
+                );
 
             const result = await api.regenerateQuestion(1);
 
-            expect(global.fetch).toHaveBeenCalledWith('/api/conversations/1/regenerate-question', {
-                method: 'POST',
+            expect(global.fetch).toHaveBeenNthCalledWith(1, '/api/auth/csrf', {
                 headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+            });
+            expect(global.fetch).toHaveBeenNthCalledWith(2, '/api/conversations/1/regenerate-question', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': 'test-token' },
                 credentials: 'include',
             });
 
@@ -172,15 +195,19 @@ describe('useApi', () => {
 
     describe('submitResponse', () => {
         it('should submit a response and get next question', async () => {
-            (global.fetch as any).mockResolvedValueOnce(
-                mockFetchSuccess(mockResponseSubmissionResult)
-            );
+            (global.fetch as any)
+                .mockResolvedValueOnce(mockFetchSuccess({ csrfToken: 'test-token' }))
+                .mockResolvedValueOnce(mockFetchSuccess(mockResponseSubmissionResult));
 
             const result = await api.submitResponse(1, 'My thoughtful response');
 
-            expect(global.fetch).toHaveBeenCalledWith('/api/conversations/1/response', {
-                method: 'POST',
+            expect(global.fetch).toHaveBeenNthCalledWith(1, '/api/auth/csrf', {
                 headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+            });
+            expect(global.fetch).toHaveBeenNthCalledWith(2, '/api/conversations/1/response', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': 'test-token' },
                 credentials: 'include',
                 body: JSON.stringify({ response: 'My thoughtful response' }),
             });
@@ -197,7 +224,9 @@ describe('useApi', () => {
                 isComplete: true,
             };
 
-            (global.fetch as any).mockResolvedValueOnce(mockFetchSuccess(completedResult));
+            (global.fetch as any)
+                .mockResolvedValueOnce(mockFetchSuccess({ csrfToken: 'test-token' }))
+                .mockResolvedValueOnce(mockFetchSuccess(completedResult));
 
             const result = await api.submitResponse(1, 'Final response');
 
@@ -206,9 +235,9 @@ describe('useApi', () => {
         });
 
         it('should handle submission errors', async () => {
-            (global.fetch as any).mockResolvedValueOnce(
-                mockFetchError('Failed to generate question', 500)
-            );
+            (global.fetch as any)
+                .mockResolvedValueOnce(mockFetchSuccess({ csrfToken: 'test-token' }))
+                .mockResolvedValueOnce(mockFetchError('Failed to generate question', 500));
 
             await expect(api.submitResponse(1, 'Response')).rejects.toThrow(
                 'Failed to generate question'
@@ -225,9 +254,9 @@ describe('useApi', () => {
 
     describe('error handling', () => {
         it('should extract error message from response body', async () => {
-            (global.fetch as any).mockResolvedValueOnce(
-                mockFetchError('Custom error message', 400)
-            );
+            (global.fetch as any)
+                .mockResolvedValueOnce(mockFetchSuccess({ csrfToken: 'test-token' }))
+                .mockResolvedValueOnce(mockFetchError('Custom error message', 400));
 
             await expect(api.createConversation('Test')).rejects.toThrow(
                 'Custom error message'
@@ -235,27 +264,31 @@ describe('useApi', () => {
         });
 
         it('should handle responses without error message', async () => {
-            (global.fetch as any).mockResolvedValueOnce(
-                Promise.resolve({
-                    ok: false,
-                    status: 500,
-                    json: async () => ({}),
-                } as Response)
-            );
+            (global.fetch as any)
+                .mockResolvedValueOnce(mockFetchSuccess({ csrfToken: 'test-token' }))
+                .mockResolvedValueOnce(
+                    Promise.resolve({
+                        ok: false,
+                        status: 500,
+                        json: async () => ({}),
+                    } as Response)
+                );
 
             await expect(api.createConversation('Test')).rejects.toThrow('HTTP 500');
         });
 
         it('should handle JSON parsing errors', async () => {
-            (global.fetch as any).mockResolvedValueOnce(
-                Promise.resolve({
-                    ok: false,
-                    status: 500,
-                    json: async () => {
-                        throw new Error('Invalid JSON');
-                    },
-                } as Response)
-            );
+            (global.fetch as any)
+                .mockResolvedValueOnce(mockFetchSuccess({ csrfToken: 'test-token' }))
+                .mockResolvedValueOnce(
+                    Promise.resolve({
+                        ok: false,
+                        status: 500,
+                        json: async () => {
+                            throw new Error('Invalid JSON');
+                        },
+                    } as Response)
+                );
 
             await expect(api.createConversation('Test')).rejects.toThrow('Request failed');
         });

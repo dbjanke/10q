@@ -4,8 +4,17 @@ import { requireAuth } from '../middleware/auth.js';
 import { getFrontendUrl, isGoogleConfigured } from '../config/env.js';
 import { User } from '../types.js';
 import { getUserStore } from '../stores/user.store.js';
+import { rateLimit } from '../middleware/rateLimit.js';
 
 const router = Router();
+
+const AUTH_RATE_LIMIT_WINDOW_MS = Number(process.env.AUTH_RATE_LIMIT_WINDOW_MS || 60000);
+const AUTH_RATE_LIMIT_MAX = Number(process.env.AUTH_RATE_LIMIT_MAX || 30);
+
+const authRateLimit = rateLimit({
+    windowMs: AUTH_RATE_LIMIT_WINDOW_MS,
+    max: AUTH_RATE_LIMIT_MAX,
+});
 
 function sanitizeUser(user: User) {
     const userStore = getUserStore();
@@ -21,14 +30,14 @@ function sanitizeUser(user: User) {
     };
 }
 
-router.get('/google', (req: Request, res: Response, next: NextFunction) => {
+router.get('/google', authRateLimit, (req: Request, res: Response, next: NextFunction) => {
     if (!isGoogleConfigured()) {
         return res.status(500).json({ error: 'Google OAuth is not configured' });
     }
     return passport.authenticate('google', { scope: ['profile', 'email'] })(req, res, next);
 });
 
-router.get('/google/callback', (req: Request, res: Response, next: NextFunction) => {
+router.get('/google/callback', authRateLimit, (req: Request, res: Response, next: NextFunction) => {
     if (!isGoogleConfigured()) {
         return res.status(500).json({ error: 'Google OAuth is not configured' });
     }
@@ -43,12 +52,25 @@ router.get('/google/callback', (req: Request, res: Response, next: NextFunction)
             return res.redirect(`${getFrontendUrl()}/login?error=${encodeURIComponent(error)}`);
         }
 
-        req.logIn(user, (loginErr) => {
-            if (loginErr) {
-                return next(loginErr);
-            }
-            return res.redirect(getFrontendUrl());
-        });
+        const completeLogin = () =>
+            req.logIn(user, (loginErr) => {
+                if (loginErr) {
+                    return next(loginErr);
+                }
+                return res.redirect(getFrontendUrl());
+            });
+
+        if (req.session) {
+            req.session.regenerate((regenErr) => {
+                if (regenErr) {
+                    return next(regenErr);
+                }
+                return completeLogin();
+            });
+            return;
+        }
+
+        return completeLogin();
     })(req, res, next);
 });
 
@@ -60,7 +82,11 @@ router.get('/me', (req: Request, res: Response) => {
     return res.json({ user: sanitizeUser(req.user as User) });
 });
 
-router.post('/logout', requireAuth, (req: Request, res: Response, next: NextFunction) => {
+router.get('/csrf', (req: Request, res: Response) => {
+    return res.json({ csrfToken: req.csrfToken() });
+});
+
+router.post('/logout', requireAuth, authRateLimit, (req: Request, res: Response, next: NextFunction) => {
     req.logout((err) => {
         if (err) {
             return next(err);

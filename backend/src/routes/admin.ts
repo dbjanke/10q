@@ -4,10 +4,22 @@ import { getUserStore } from '../stores/user.store.js';
 import { parseIdParam } from '../utils/params.js';
 import { PERMISSIONS, isValidPermission, type Permission } from '../config/permissions.js';
 import { MAX_GROUP_NAME_LENGTH } from '../config/validation.js';
+import { rateLimit } from '../middleware/rateLimit.js';
 
 const router = Router();
 
 router.use(requireAdmin);
+
+const ADMIN_RATE_LIMIT_WINDOW_MS = Number(process.env.ADMIN_RATE_LIMIT_WINDOW_MS || 60000);
+const ADMIN_RATE_LIMIT_MAX = Number(process.env.ADMIN_RATE_LIMIT_MAX || 120);
+
+const adminRateLimit = rateLimit({
+    windowMs: ADMIN_RATE_LIMIT_WINDOW_MS,
+    max: ADMIN_RATE_LIMIT_MAX,
+    keyGenerator: (req) => (req.user?.id ? `user:${req.user.id}` : req.ip || 'unknown'),
+});
+
+router.use(adminRateLimit);
 
 function isValidEmail(email: string): boolean {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);

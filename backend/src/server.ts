@@ -4,12 +4,14 @@ import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import session from 'express-session';
 import passport from 'passport';
+import helmet from 'helmet';
 import { initializeDatabase, getDatabase } from './config/database.js';
 import { loadEnv, validateEnv, getCookieSecure, getFrontendUrl, getNodeEnv, getSessionSecret } from './config/env.js';
 import routes from './routes.js';
 import authRoutes from './routes/auth.js';
 import adminRoutes from './routes/admin.js';
 import { configurePassport } from './auth/passport.js';
+import { csrfProtection } from './middleware/csrf.js';
 // @ts-expect-error - package does not ship types
 import SQLiteStoreFactory from 'better-sqlite3-session-store';
 
@@ -49,8 +51,28 @@ app.use(
     credentials: true,
   })
 );
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      useDefaults: true,
+      directives: {
+        "default-src": ["'self'"],
+        "script-src": ["'self'"],
+        "style-src": ["'self'", "'unsafe-inline'"],
+        "img-src": ["'self'", "data:", "https:"],
+        "font-src": ["'self'", "data:"],
+        "connect-src": ["'self'"],
+        "object-src": ["'none'"],
+        "base-uri": ["'self'"],
+        "frame-ancestors": ["'none'"],
+        "form-action": ["'self'"],
+      },
+    },
+    referrerPolicy: { policy: 'no-referrer' },
+  })
+);
+app.use(express.json({ limit: '100kb' }));
+app.use(express.urlencoded({ extended: true, limit: '100kb' }));
 
 const SQLiteStore = SQLiteStoreFactory(session);
 app.use(
@@ -65,10 +87,12 @@ app.use(
     secret: SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
+    rolling: false,
     cookie: {
       httpOnly: true,
       sameSite: 'lax',
       secure: COOKIE_SECURE,
+      path: '/',
       maxAge: 1000 * 60 * 60 * 24 * 7,
     },
   })
@@ -77,6 +101,8 @@ app.use(
 configurePassport();
 app.use(passport.initialize());
 app.use(passport.session());
+
+app.use(csrfProtection);
 
 // Request logging in development
 if (NODE_ENV === 'development') {
@@ -101,6 +127,13 @@ if (NODE_ENV === 'production') {
     res.sendFile(join(frontendPath, 'index.html'));
   });
 }
+
+app.use((err: unknown, _req: express.Request, res: express.Response, next: express.NextFunction) => {
+  if (typeof err === 'object' && err && 'code' in err && err.code === 'EBADCSRFTOKEN') {
+    return res.status(403).json({ error: 'Invalid CSRF token' });
+  }
+  return next(err);
+});
 
 // Error handling middleware
 app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
