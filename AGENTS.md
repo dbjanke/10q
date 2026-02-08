@@ -2,6 +2,17 @@
 
 This repo favors a modular design with clear boundaries. Example: SQLite-specific code is isolated in the store layer ([backend/src/stores/sqlite/conversation.store.ts](backend/src/stores/sqlite/conversation.store.ts)) behind the interface in [backend/src/stores/conversation.store.ts](backend/src/stores/conversation.store.ts), keeping business logic in services.
 
+## Project Tenets
+
+1. **Optimise for operational calm.**
+Prefer designs that are predictable, low-maintenance, and hard to accidentally abuse or overspend.
+
+2. **Focus on the conversation.**
+Prioritise depth, focus, and thoughtful responses over engagement, metrics, or sharing.
+
+3. **Shape before scale.**
+Choose the simplest architecture that preserves the intended experience, and resist infrastructure that increases the complexity.
+
 ## Principles
 - Prefer simple, composable designs (Hickey’s “Simple Made Easy”). Separate policy (core logic) from implementation details (IO, DB, 3rd‑party APIs).
 - After large changes or error-heavy debugging, pause to review the overall shape of the solution. Look for hacks/kludges, mismatches between structure and domain use cases, and opportunities to simplify or refactor before shipping.
