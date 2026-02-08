@@ -5,6 +5,7 @@ import { parseIdParam } from '../utils/params.js';
 import { PERMISSIONS, isValidPermission, type Permission } from '../config/permissions.js';
 import { MAX_GROUP_NAME_LENGTH } from '../config/validation.js';
 import { rateLimit } from '../middleware/rateLimit.js';
+import { logger } from '../utils/logger.js';
 
 const router = Router();
 
@@ -23,6 +24,20 @@ router.use(adminRateLimit);
 
 function isValidEmail(email: string): boolean {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+function auditAdminAction(req: Request, action: string, details?: Record<string, unknown>) {
+    logger.info(
+        {
+            audit: true,
+            action,
+            actorId: req.user?.id,
+            actorRole: req.user?.role,
+            path: req.path,
+            details,
+        },
+        'Admin action'
+    );
 }
 
 router.get('/users', (_req: Request, res: Response) => {
@@ -59,6 +74,7 @@ router.post('/groups', (req: Request, res: Response) => {
 
     try {
         const created = getUserStore().createGroup(name.trim());
+        auditAdminAction(req, 'group.create', { groupId: created.id, name: created.name });
         return res.status(201).json(created);
     } catch (error) {
         const message = error instanceof Error ? error.message : '';
@@ -113,6 +129,7 @@ router.patch('/groups/:id', (req: Request, res: Response) => {
             if (!updated) {
                 return res.status(404).json({ error: 'Group not found' });
             }
+            auditAdminAction(req, 'group.update', { groupId: id, name: updated.name });
             return res.json(updated);
         } catch (error) {
             const message = error instanceof Error ? error.message : '';
@@ -127,6 +144,7 @@ router.patch('/groups/:id', (req: Request, res: Response) => {
     if (!group) {
         return res.status(404).json({ error: 'Group not found' });
     }
+    auditAdminAction(req, 'group.permissions.update', { groupId: id, permissions: group.permissions });
     return res.json(group);
 });
 
@@ -140,6 +158,8 @@ router.delete('/groups/:id', (req: Request, res: Response) => {
     if (!deleted) {
         return res.status(404).json({ error: 'Group not found' });
     }
+
+    auditAdminAction(req, 'group.delete', { groupId: id });
 
     return res.status(204).send();
 });
@@ -162,6 +182,8 @@ router.post('/users', (req: Request, res: Response) => {
         role: role || 'user',
         status: 'invited',
     });
+
+    auditAdminAction(req, 'user.invite', { userId: created.id, role: created.role });
 
     return res.status(201).json(created);
 });
@@ -227,6 +249,8 @@ router.patch('/users/:id', (req: Request, res: Response) => {
         status,
     });
 
+    auditAdminAction(req, 'user.update', { userId: id, role, status, groupIds });
+
     return res.json({
         ...updated,
         groupIds: userStore.getUserGroupIds(id),
@@ -256,6 +280,8 @@ router.delete('/users/:id', (req: Request, res: Response) => {
     if (!deleted) {
         return res.status(404).json({ error: 'User not found' });
     }
+
+    auditAdminAction(req, 'user.delete', { userId: id });
 
     return res.status(204).send();
 });

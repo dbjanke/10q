@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
+import { AppError } from '../utils/errors.js';
 
 interface ConcurrencyLimitOptions {
     max: number;
@@ -10,7 +11,7 @@ export function concurrencyLimit(options: ConcurrencyLimitOptions) {
 
     return (req: Request, res: Response, next: NextFunction) => {
         if (active >= max) {
-            return res.status(503).json({ error: 'Server busy' });
+            return next(new AppError('Server busy', 503, 'server_busy'));
         }
 
         active += 1;

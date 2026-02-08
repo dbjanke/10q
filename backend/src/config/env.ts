@@ -74,6 +74,10 @@ export function getCookieSecure(): boolean {
     return getNodeEnv() === 'production' && getFrontendUrl().startsWith('https://');
 }
 
+export function getLogLevel(): string {
+    return process.env.LOG_LEVEL || (getNodeEnv() === 'production' ? 'info' : 'debug');
+}
+
 export function isGoogleConfigured(): boolean {
     return Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
 }

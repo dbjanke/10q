@@ -1,6 +1,7 @@
 import Database from 'better-sqlite3';
 import { readFileSync, mkdirSync } from 'fs';
 import { join, dirname } from 'path';
+import { logger } from '../utils/logger.js';
 import { fileURLToPath } from 'url';
 import { PERMISSIONS } from './permissions.js';
 
@@ -19,7 +20,7 @@ export function initializeDatabase(): Database.Database {
   }
 
   const DATABASE_PATH = getDatabasePath();
-  console.log('Initializing database at:', DATABASE_PATH);
+  logger.info({ path: DATABASE_PATH }, 'Initializing database');
 
   // Create data directory if it doesn't exist
   const dbDir = dirname(DATABASE_PATH);
@@ -44,7 +45,7 @@ export function initializeDatabase(): Database.Database {
     "UPDATE group_permissions SET permission = ? WHERE permission = 'prompt_tools'"
   ).run(newPermission);
 
-  console.log('Database initialized successfully');
+  logger.info('Database initialized successfully');
 
   return db;
 }

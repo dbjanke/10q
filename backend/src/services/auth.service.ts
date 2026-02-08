@@ -1,12 +1,13 @@
 import { Profile } from 'passport-google-oauth20';
 import { User } from '../types.js';
 import { getUserStore } from '../stores/user.store.js';
+import { logger } from '../utils/logger.js';
 
 export function handleGoogleLogin(profile: Profile): User | null {
     const rawEmail = profile.emails?.[0]?.value;
     const email = rawEmail?.trim().toLowerCase();
     if (!email) {
-        console.warn('Google profile missing email address');
+        logger.warn('Google profile missing email address');
         return null;
     }
 
@@ -44,6 +45,6 @@ export function handleGoogleLogin(profile: Profile): User | null {
         }
     }
 
-    console.warn(`Login denied: email not on allowlist (${email})`);
+    logger.warn('Login denied: email not on allowlist');
     return null;
 }

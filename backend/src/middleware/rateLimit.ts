@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
+import { AppError } from '../utils/errors.js';
 
 interface RateLimitOptions {
     windowMs: number;
@@ -26,7 +27,7 @@ export function rateLimit(options: RateLimitOptions) {
         }
 
         if (existing.count >= max) {
-            return res.status(429).json({ error: 'Too many requests' });
+            return next(new AppError('Too many requests', 429, 'rate_limit'));
         }
 
         existing.count += 1;

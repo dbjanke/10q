@@ -10,6 +10,7 @@ import { concurrencyLimit } from './middleware/concurrencyLimit.js';
 import { requireAuth } from './middleware/auth.js';
 import { requirePermission } from './middleware/permissions.js';
 import { parseIdParam } from './utils/params.js';
+import { logger } from './utils/logger.js';
 
 const router = Router();
 
@@ -46,7 +47,7 @@ router.get('/deep-ping', (_req: Request, res: Response) => {
       latencyMs: Date.now() - start,
     });
   } catch (error) {
-    console.error('Deep ping failed:', error);
+    logger.error({ err: error }, 'Deep ping failed');
     res.status(503).json({ ok: false });
   }
 });
@@ -83,7 +84,7 @@ router.post(
 
       return res.json({ summary: summaryMessage.content });
     } catch (error) {
-      console.error('Error regenerating summary:', error);
+      logger.error({ err: error }, 'Error regenerating summary');
       return res.status(500).json({ error: 'Failed to regenerate summary' });
     }
   }
@@ -144,7 +145,7 @@ router.post(
 
       return res.json({ question: questionMessage });
     } catch (error) {
-      console.error('Error regenerating question:', error);
+      logger.error({ err: error }, 'Error regenerating question');
       return res.status(500).json({ error: 'Failed to regenerate question' });
     }
   }
@@ -188,7 +189,7 @@ router.post('/conversations', async (req: Request, res: Response) => {
       firstQuestion: questionMessage,
     });
   } catch (error) {
-    console.error('Error creating conversation:', error);
+    logger.error({ err: error }, 'Error creating conversation');
     res.status(500).json({ error: 'Failed to create conversation' });
   }
 });
@@ -200,7 +201,7 @@ router.get('/conversations', (req: Request, res: Response) => {
     const conversations = conversationService.getAllConversations(userId);
     res.json(conversations);
   } catch (error) {
-    console.error('Error fetching conversations:', error);
+    logger.error({ err: error }, 'Error fetching conversations');
     res.status(500).json({ error: 'Failed to fetch conversations' });
   }
 });
@@ -223,7 +224,7 @@ router.get('/conversations/:id', (req: Request, res: Response) => {
 
     res.json(conversation);
   } catch (error) {
-    console.error('Error fetching conversation:', error);
+    logger.error({ err: error }, 'Error fetching conversation');
     res.status(500).json({ error: 'Failed to fetch conversation' });
   }
 });
@@ -246,7 +247,7 @@ router.delete('/conversations/:id', (req: Request, res: Response) => {
 
     res.status(204).send();
   } catch (error) {
-    console.error('Error deleting conversation:', error);
+    logger.error({ err: error }, 'Error deleting conversation');
     res.status(500).json({ error: 'Failed to delete conversation' });
   }
 });
@@ -336,7 +337,7 @@ router.post(
         isComplete: false,
       });
     } catch (error) {
-      console.error('Error submitting response:', error);
+      logger.error({ err: error }, 'Error submitting response');
       res.status(500).json({ error: 'Failed to submit response' });
     }
   });
@@ -366,7 +367,7 @@ router.get('/conversations/:id/export', (req: Request, res: Response) => {
     );
     res.send(markdown);
   } catch (error) {
-    console.error('Error exporting conversation:', error);
+    logger.error({ err: error }, 'Error exporting conversation');
     res.status(500).json({ error: 'Failed to export conversation' });
   }
 });

@@ -12,6 +12,8 @@ import authRoutes from './routes/auth.js';
 import adminRoutes from './routes/admin.js';
 import { configurePassport } from './auth/passport.js';
 import { csrfProtection } from './middleware/csrf.js';
+import { errorHandler } from './middleware/errorHandler.js';
+import { logger, requestLogger } from './utils/logger.js';
 // @ts-expect-error - package does not ship types
 import SQLiteStoreFactory from 'better-sqlite3-session-store';
 
@@ -24,7 +26,7 @@ try {
   validateEnv();
 } catch (error) {
   const message = error instanceof Error ? error.message : String(error);
-  console.error(`Configuration error: ${message}`);
+  logger.error({ err: error }, `Configuration error: ${message}`);
   process.exit(1);
 }
 
@@ -39,7 +41,7 @@ const SESSION_SECRET = getSessionSecret();
 try {
   initializeDatabase();
 } catch (error) {
-  console.error('Failed to initialize database:', error);
+  logger.error({ err: error }, 'Failed to initialize database');
   process.exit(1);
 }
 
@@ -51,6 +53,13 @@ app.use(
     credentials: true,
   })
 );
+app.use(requestLogger);
+app.use((req, res, next) => {
+  if (req.id) {
+    res.setHeader('X-Request-Id', req.id);
+  }
+  next();
+});
 app.use(
   helmet({
     contentSecurityPolicy: {
@@ -106,8 +115,8 @@ app.use(csrfProtection);
 
 // Request logging in development
 if (NODE_ENV === 'development') {
-  app.use((req, res, next) => {
-    console.log(`${req.method} ${req.path}`);
+  app.use((req, _res, next) => {
+    logger.debug({ method: req.method, path: req.path }, 'Incoming request');
     next();
   });
 }
@@ -128,30 +137,19 @@ if (NODE_ENV === 'production') {
   });
 }
 
-app.use((err: unknown, _req: express.Request, res: express.Response, next: express.NextFunction) => {
-  if (typeof err === 'object' && err && 'code' in err && err.code === 'EBADCSRFTOKEN') {
-    return res.status(403).json({ error: 'Invalid CSRF token' });
-  }
-  return next(err);
-});
-
 // Error handling middleware
-app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
-  console.error('Unhandled error:', err);
-  res.status(500).json({ error: 'Internal server error' });
-});
+app.use(errorHandler);
 
 // Start server
 app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
-  console.log(`Environment: ${NODE_ENV}`);
+  logger.info({ port: PORT, env: NODE_ENV }, 'Server started');
   if (NODE_ENV === 'production') {
-    console.log('Serving frontend from backend');
+    logger.info('Serving frontend from backend');
   }
 });
 
 // Graceful shutdown
 process.on('SIGINT', () => {
-  console.log('\nShutting down gracefully...');
+  logger.info('Shutting down gracefully');
   process.exit(0);
 });

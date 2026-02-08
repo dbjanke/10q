@@ -5,6 +5,7 @@ import { getFrontendUrl, isGoogleConfigured } from '../config/env.js';
 import { User } from '../types.js';
 import { getUserStore } from '../stores/user.store.js';
 import { rateLimit } from '../middleware/rateLimit.js';
+import { logger } from '../utils/logger.js';
 
 const router = Router();
 
@@ -43,7 +44,7 @@ router.get('/google/callback', authRateLimit, (req: Request, res: Response, next
     }
     passport.authenticate('google', (err: unknown, user: User | false, info?: { message?: string }) => {
         if (err) {
-            console.error('Google OAuth error:', err);
+            logger.error({ err }, 'Google OAuth error');
             return res.redirect(`${getFrontendUrl()}/login?error=auth_failed`);
         }
 

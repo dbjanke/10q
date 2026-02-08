@@ -3,12 +3,14 @@ import request from 'supertest';
 import express from 'express';
 import { rateLimit } from '../../middleware/rateLimit.js';
 import { concurrencyLimit } from '../../middleware/concurrencyLimit.js';
+import { errorHandler } from '../../middleware/errorHandler.js';
 
 describe('Middleware - rateLimit', () => {
     it('should block when limit is exceeded', async () => {
         const app = express();
         app.use(rateLimit({ windowMs: 1000, max: 1 }));
         app.get('/test', (_req, res) => res.status(200).send('ok'));
+        app.use(errorHandler);
 
         const first = await request(app).get('/test');
         const second = await request(app).get('/test');
@@ -24,6 +26,7 @@ describe('Middleware - concurrencyLimit', () => {
         const app = express();
         app.use(concurrencyLimit({ max: 0 }));
         app.get('/test', (_req, res) => res.status(200).send('ok'));
+        app.use(errorHandler);
 
         const response = await request(app).get('/test');
 

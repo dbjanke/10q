@@ -25,7 +25,9 @@
     "helmet": "^8.0.0",
     "passport": "^0.7.0",
     "passport-google-oauth20": "^2.0.0",
-    "openai": "^6.18.0"
+    "openai": "^6.18.0",
+    "pino": "^9.5.0",
+    "pino-http": "^10.4.0"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.8",

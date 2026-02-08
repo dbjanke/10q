@@ -2,6 +2,7 @@ import { performance } from 'perf_hooks';
 import { getDatabase } from '../../config/database.js';
 import { Conversation, ConversationWithMessages, Message } from '../../types.js';
 import { ConversationStore } from '../conversation.store.js';
+import { logger } from '../../utils/logger.js';
 
 const SLOW_QUERY_MS = Number(process.env.SLOW_QUERY_MS || 200);
 
@@ -11,7 +12,7 @@ function withTiming<T>(label: string, fn: () => T): T {
     const durationMs = performance.now() - start;
 
     if (durationMs >= SLOW_QUERY_MS) {
-        console.warn(`[slow-query] ${label} took ${durationMs.toFixed(1)}ms`);
+        logger.warn({ label, durationMs }, 'Slow query');
     }
 
     return result;
