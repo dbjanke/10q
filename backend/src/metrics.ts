@@ -26,6 +26,12 @@ const httpErrorsTotal = new client.Counter({
     registers: [register],
 });
 
+const openaiCircuitOpen = new client.Gauge({
+    name: 'openai_circuit_open',
+    help: 'OpenAI circuit breaker state (0=closed, 1=open, 0.5=half-open)',
+    registers: [register],
+});
+
 function getRouteLabel(req: Request): string {
     const routePath = req.route?.path;
     if (routePath) {
@@ -84,6 +90,16 @@ function authorizeMetrics(req: Request, res: Response): boolean {
     }
 
     return true;
+}
+
+export function updateCircuitBreakerMetric(state: 'open' | 'closed' | 'half_open') {
+    if (state === 'open') {
+        openaiCircuitOpen.set(1);
+    } else if (state === 'half_open') {
+        openaiCircuitOpen.set(0.5);
+    } else {
+        openaiCircuitOpen.set(0);
+    }
 }
 
 export async function metricsEndpoint(req: Request, res: Response) {
