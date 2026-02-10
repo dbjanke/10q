@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MemoryRouter } from 'react-router-dom';
 import AdminUsers from '../../components/AdminUsers';
 import * as api from '../../hooks/useApi';
 
@@ -50,7 +51,11 @@ describe('AdminUsers', () => {
             groupIds: [],
         } as any);
 
-        render(<AdminUsers currentUser={currentUser as any} onLogout={vi.fn()} />);
+        render(
+            <MemoryRouter>
+                <AdminUsers currentUser={currentUser as any} onLogout={vi.fn()} />
+            </MemoryRouter>
+        );
 
         await waitFor(() => {
             expect(screen.getAllByText('prompt-tools').length).toBeGreaterThan(0);

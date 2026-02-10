@@ -13,6 +13,21 @@ interface ConversationViewProps {
   onLogout: () => void;
 }
 
+interface ResponseCardProps {
+  response: Message;
+}
+
+function ResponseCard({ response }: ResponseCardProps) {
+  return (
+    <div className="response-box">
+      <p className="muted" style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>
+        Your Response:
+      </p>
+      <p style={{ whiteSpace: 'pre-wrap' }}>{response.content}</p>
+    </div>
+  );
+}
+
 export default function ConversationView({ currentUser, onLogout }: ConversationViewProps) {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -193,6 +208,11 @@ export default function ConversationView({ currentUser, onLogout }: Conversation
               ? 'Completed'
               : `Question ${conversation.currentQuestionNumber} of 10`}
           </p>
+          {!isComplete && (
+            <div className="notice" style={{ marginTop: 14 }}>
+              Take your time with each question. Write freely and generously. Include context, associations, half formed thoughts, and even your internal dialogue. Aim for at least a full paragraph each time, two if you can, and pause long enough to actually feel whether what you are writing is true.
+            </div>
+          )}
         </div>
 
         {error && (
@@ -236,14 +256,7 @@ export default function ConversationView({ currentUser, onLogout }: Conversation
                       question={pair.question}
                       isLatest={false}
                     />
-                    {pair.response && (
-                      <div className="response-box">
-                        <p className="muted" style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>
-                          Your Response:
-                        </p>
-                        <p style={{ whiteSpace: 'pre-wrap' }}>{pair.response.content}</p>
-                      </div>
-                    )}
+                    {pair.response && <ResponseCard response={pair.response} />}
                   </div>
                 ))}
               </div>
@@ -259,14 +272,7 @@ export default function ConversationView({ currentUser, onLogout }: Conversation
                     question={pair.question}
                     isLatest={pair.question.id === currentQuestion?.id}
                   />
-                  {pair.response && (
-                    <div className="response-box">
-                      <p className="muted" style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>
-                        Your Response:
-                      </p>
-                      <p style={{ whiteSpace: 'pre-wrap' }}>{pair.response.content}</p>
-                    </div>
-                  )}
+                  {pair.response && <ResponseCard response={pair.response} />}
                 </div>
               ))}
             </div>

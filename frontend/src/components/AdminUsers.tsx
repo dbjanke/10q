@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Group, Permission, User } from '../types';
 import { MAX_GROUP_NAME_LENGTH } from '../config/validation';
 import * as api from '../hooks/useApi';
@@ -183,7 +184,7 @@ export default function AdminUsers({ currentUser, onLogout }: AdminUsersProps) {
                 <AppHeader user={currentUser} onLogout={onLogout} />
 
                 <div style={{ marginBottom: 24 }}>
-                    <a href="/" className="btn btn-ghost">← Back to Dashboard</a>
+                    <Link to="/" className="btn btn-ghost">← Back to Dashboard</Link>
                 </div>
 
                 <div className="card" style={{ padding: 24, marginBottom: 24 }}>
