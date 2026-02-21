@@ -9,47 +9,47 @@
     {
       "number": 2,
       "name": "Surface the real concern",
-      "prompt": "Ask a question that gets underneath the topic to the specific issue, tension, or uncertainty that feels most unresolved or emotionally charged for the user."
+      "prompt": "Press past the user's first framing to get at the deeper tension, uncertainty, or fear driving the issue, while staying tied to the subject they came in with."
     },
     {
       "number": 3,
       "name": "Articulate the perceived structure",
-      "prompt": "Ask a question that invites the user to describe the forces, patterns, or underlying structures they believe are shaping the situation right now—surfacing their current mental model of how this dynamic works, without requiring a conclusion, judgment, or defended claim."
+      "prompt": "Push the user to spell out how they think the situation actually works by making them connect the main parts, pressures, and causes instead of staying at the level of impressions or conclusions."
     },
     {
       "number": 4,
-      "name": "Examine what the belief rests on",
-      "prompt": "Ask a question that surfaces what the user’s claim is based on and how solid each of those foundations actually feels to them."
+      "name": "Pressure the hidden assumptions",
+      "prompt": "Challenge the assumptions, bias, and framing in the user's current view by pressing on what they seem to be taking for granted, overlooking, or treating too simply, while keeping the focus on the original issue."
     },
     {
       "number": 5,
-      "name": "Pressure-test assumptions",
-      "prompt": "Ask a single, open-ended question that confronts the user with the most self-serving, identity-protective, or convenient assumption underlying their claim, explicitly naming the bias or reasoning shortcut at work and asking what concrete evidence, counterexample, or lived experience would genuinely force them to revise or abandon their current framing."
+      "name": "Rebuild the picture",
+      "prompt": "Use the pressure applied to the user's assumptions, bias, or framing in the previous response to push them toward a clearer account of the original issue, showing what now looks different, what still holds, and how the parts fit together under this sharper view."
     },
     {
       "number": 6,
-      "name": "Reveal emotional stakes",
-      "prompt": "Ask a question that forces the user to reflect on what they are emotionally protecting or afraid to lose if their claim is true, in a way that invites personal reflection rather than a short or factual answer."
+      "name": "Expose the gut logic",
+      "prompt": "Push beneath the user's stated view to get at the gut reaction, felt truth, or deeper belief underneath it, especially what they seem to fear, protect, or take to say something important about how the world really works."
     },
     {
       "number": 7,
-      "name": "Expose the friction",
-      "prompt": "Ask a question that forces the user to reflect on where their claim clashes with another value, goal, or self-image they care about, and what that tension feels like for them."
+      "name": "Re-anchor around the deeper belief",
+      "prompt": "Use the deeper belief or gut logic surfaced in the previous response to sharpen the user's picture of the original issue, showing how that underlying reaction shapes what they notice, expect, and treat as important."
     },
     {
       "number": 8,
-      "name": "Switch perspective",
-      "prompt": "Ask a question that forces the user to view the same core idea from the perspective of someone who would see or experience it very differently, without changing the topic or easing the tension uncovered earlier."
+      "name": "Surface the cost",
+      "prompt": "Identify one specific cost, trade-off, or sacrifice embedded in the user's current position on the original issue — something they are implicitly choosing to leave behind or discount — and press them on that specific cost, forcing them to reckon with whether it is one they are actually willing to accept; do not ask the user to identify the trade-off, name it in the question and make them defend it."
     },
     {
       "number": 9,
-      "name": "Consider implications",
-      "prompt": "Ask a question that pushes the user to consider the downstream implications or second-order effects of their claim if it were widely acted on or turned into a rule."
+      "name": "Reframe through the cost",
+      "prompt": "Use the cost or trade-off surfaced in the previous response to press the user toward a sharper account of the original issue, showing how the willingness or unwillingness to accept that cost changes what the issue is really about and what is actually at stake in it."
     },
     {
       "number": 10,
-      "name": "Find what changes",
-      "prompt": "Ask a question that forces the user to confront what this line of thinking would no longer let them comfortably ignore in real life or in the world around them."
+      "name": "Extend the consequence",
+      "prompt": "Take the user's sharpened position on the original issue as true, and identify one concrete consequence of it being true that the user has not yet faced — something it implies, demands, or predicts about the world, the people they are writing for, or the broader situation, not about the user's own process; press them on that specific consequence; the consequence should complicate their position rather than celebrate it, making the issue feel larger or less settled than before; do not ask the user to identify the consequence, name it in the question and make them reckon with it."
     }
   ]
 }
