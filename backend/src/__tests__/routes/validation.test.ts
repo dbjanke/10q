@@ -142,6 +142,7 @@ describe('Routes - Validation', () => {
                 createdAt: new Date().toISOString(),
                 completed: false,
                 currentQuestionNumber: 5,
+                messages: [],
             });
         });
 

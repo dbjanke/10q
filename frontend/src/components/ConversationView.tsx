@@ -104,8 +104,10 @@ export default function ConversationView({ currentUser, onLogout }: Conversation
       // Scroll to the new content after state update
       setTimeout(scrollToBottom, 100);
     } catch (err) {
-      setError('Failed to submit response');
+      const message = err instanceof Error ? err.message : 'Failed to submit response';
+      setError(message);
       console.error(err);
+      throw err;
     } finally {
       setSubmitting(false);
     }

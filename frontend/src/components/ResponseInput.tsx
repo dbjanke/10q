@@ -2,18 +2,23 @@ import { useState } from 'react';
 import { MAX_RESPONSE_LENGTH } from '../config/validation';
 
 interface ResponseInputProps {
-  onSubmit: (response: string) => void;
+  onSubmit: (response: string) => Promise<void> | void;
   disabled?: boolean;
 }
 
 export default function ResponseInput({ onSubmit, disabled }: ResponseInputProps) {
   const [response, setResponse] = useState('');
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (response.trim() && !disabled) {
-      onSubmit(response.trim());
-      setResponse('');
+      const draft = response.trim();
+      try {
+        await onSubmit(draft);
+        setResponse('');
+      } catch {
+        // Keep the draft in the textarea so users can retry without losing work.
+      }
     }
   }
 

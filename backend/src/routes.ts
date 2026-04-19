@@ -11,6 +11,7 @@ import { requireAuth } from './middleware/auth.js';
 import { requirePermission } from './middleware/permissions.js';
 import { parseIdParam } from './utils/params.js';
 import { logger } from './utils/logger.js';
+import { Message } from './types.js';
 
 const router = Router();
 
@@ -278,6 +279,8 @@ router.post(
   responseRateLimit,
   responseConcurrencyLimit,
   async (req: Request, res: Response) => {
+    let responseMessage: Message | null = null;
+
     try {
       const userId = req.user!.id;
       const id = parseIdParam(req.params.id);
@@ -309,53 +312,104 @@ router.post(
       }
 
       const currentQuestionNumber = conversation.currentQuestionNumber;
+      const nextQuestionNumber = currentQuestionNumber + 1;
+
+      const existingResponse = conversation.messages.find(
+        (message) =>
+          message.type === 'response' && message.questionNumber === currentQuestionNumber
+      );
+
+      if (existingResponse) {
+        responseMessage = existingResponse;
+
+        if (conversation.completed) {
+          const summaryMessage = conversation.messages.find((message) => message.type === 'summary');
+          if (summaryMessage) {
+            return res.json({
+              savedResponse: responseMessage,
+              isComplete: true,
+              summary: summaryMessage.content,
+            });
+          }
+        }
+
+        const existingNextQuestion = conversation.messages.find(
+          (message) =>
+            message.type === 'question' && message.questionNumber === nextQuestionNumber
+        );
+
+        if (existingNextQuestion) {
+          return res.json({
+            savedResponse: responseMessage,
+            nextQuestion: existingNextQuestion,
+            isComplete: false,
+          });
+        }
+      }
 
       // Save user's response
-      const responseMessage = conversationService.saveMessage(
-        id,
-        'response',
-        response.trim(),
-        currentQuestionNumber
-      );
+      if (!responseMessage) {
+        responseMessage = conversationService.saveMessage(
+          id,
+          'response',
+          response.trim(),
+          currentQuestionNumber
+        );
+      }
 
       // Check if we've completed all 10 questions
       if (currentQuestionNumber >= 10) {
-        // Generate summary
-        const messages = conversationService.getConversationMessages(id);
-        const summary = await openaiService.generateSummary(messages);
+        try {
+          // Generate summary
+          const messages = conversationService.getConversationMessages(id);
+          const summary = await openaiService.generateSummary(messages);
 
-        // Save summary
-        conversationService.saveMessage(id, 'summary', summary);
-        conversationService.updateConversationSummary(id, summary);
+          // Save summary
+          conversationService.saveMessage(id, 'summary', summary);
+          conversationService.updateConversationSummary(id, summary);
 
-        return res.json({
-          savedResponse: responseMessage,
-          isComplete: true,
-          summary,
-        });
+          return res.json({
+            savedResponse: responseMessage,
+            isComplete: true,
+            summary,
+          });
+        } catch (error) {
+          logger.error({ err: error, conversationId: id }, 'Summary generation failed after saving response');
+          return res.status(502).json({
+            error:
+              'Your response was saved, but we could not generate the summary. Please try submitting again.',
+          });
+        }
       }
 
       // Generate next question
-      const nextQuestionNumber = currentQuestionNumber + 1;
-      const messages = conversationService.getConversationMessages(id);
-      const nextQuestion = await openaiService.generateQuestion(messages, nextQuestionNumber);
+      try {
+        const messages = conversationService.getConversationMessages(id);
+        const nextQuestion = await openaiService.generateQuestion(messages, nextQuestionNumber);
 
-      // Save next question
-      const questionMessage = conversationService.saveMessage(
-        id,
-        'question',
-        nextQuestion,
-        nextQuestionNumber
-      );
+        // Save next question
+        const questionMessage = conversationService.saveMessage(
+          id,
+          'question',
+          nextQuestion,
+          nextQuestionNumber
+        );
 
-      // Update conversation progress
-      conversationService.updateConversationProgress(id, nextQuestionNumber);
+        // Update conversation progress
+        conversationService.updateConversationProgress(id, nextQuestionNumber);
 
-      res.json({
-        savedResponse: responseMessage,
-        nextQuestion: questionMessage,
-        isComplete: false,
-      });
+        return res.json({
+          savedResponse: responseMessage,
+          nextQuestion: questionMessage,
+          isComplete: false,
+        });
+      } catch (error) {
+        logger.error({ err: error, conversationId: id }, 'Question generation failed after saving response');
+        return res.status(502).json({
+          error:
+            'Your response was saved, but we could not generate the next question. Please submit again to retry.',
+        });
+      }
     } catch (error) {
       logger.error({ err: error }, 'Error submitting response');
       res.status(500).json({ error: 'Failed to submit response' });
