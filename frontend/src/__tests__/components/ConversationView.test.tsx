@@ -426,4 +426,120 @@ describe('ConversationView - Completion Flow', () => {
             expect(api.regenerateQuestion).toHaveBeenCalledWith(1);
         });
     });
+
+    it('shows latest key insights section and allows regenerating key insights', async () => {
+        const user = userEvent.setup();
+        const currentUserWithHighlightsPermission = {
+            ...currentUser,
+            permissions: ['regenerate_highlights'] as const,
+        };
+
+        const inProgressConversation = {
+            id: 1,
+            title: 'Test Conversation',
+            summary: null,
+            createdAt: new Date().toISOString(),
+            completed: false,
+            currentQuestionNumber: 2,
+            messages: [
+                {
+                    id: 1,
+                    conversationId: 1,
+                    type: 'question',
+                    content: 'Question 2?',
+                    questionNumber: 2,
+                    createdAt: new Date().toISOString(),
+                },
+                {
+                    id: 2,
+                    conversationId: 1,
+                    type: 'highlight',
+                    content: 'Unique ideas\n- Strong long-term view',
+                    createdAt: new Date().toISOString(),
+                },
+            ],
+        };
+
+        vi.mocked(api.getConversation).mockResolvedValue(inProgressConversation as any);
+        vi.mocked(api.regenerateHighlights).mockResolvedValue({
+            highlights: {
+                id: 3,
+                conversationId: 1,
+                type: 'highlight',
+                content: 'Regenerated highlights',
+                createdAt: new Date().toISOString(),
+            },
+        } as any);
+
+        render(
+            <BrowserRouter>
+                <ConversationView currentUser={currentUserWithHighlightsPermission as any} onLogout={vi.fn()} />
+            </BrowserRouter>
+        );
+
+        await waitFor(() => {
+            expect(screen.getByText('Question 2 of 10')).toBeInTheDocument();
+        });
+
+        const toggle = screen.getByText('Key Insights');
+        await user.click(toggle);
+
+        await waitFor(() => {
+            expect(screen.getByText((content) => content.includes('Unique ideas'))).toBeInTheDocument();
+        });
+
+        const regenerateHighlightsButton = screen.getByRole('button', { name: 'Regenerate key insights' });
+        await user.click(regenerateHighlightsButton);
+
+        await waitFor(() => {
+            expect(api.regenerateHighlights).toHaveBeenCalledWith(1);
+        });
+    });
+
+    it('hides regenerate key insights button without permission', async () => {
+        const user = userEvent.setup();
+
+        const inProgressConversation = {
+            id: 1,
+            title: 'Test Conversation',
+            summary: null,
+            createdAt: new Date().toISOString(),
+            completed: false,
+            currentQuestionNumber: 2,
+            messages: [
+                {
+                    id: 1,
+                    conversationId: 1,
+                    type: 'question',
+                    content: 'Question 2?',
+                    questionNumber: 2,
+                    createdAt: new Date().toISOString(),
+                },
+                {
+                    id: 2,
+                    conversationId: 1,
+                    type: 'highlight',
+                    content: 'Unique ideas\n- Strong long-term view',
+                    createdAt: new Date().toISOString(),
+                },
+            ],
+        };
+
+        vi.mocked(api.getConversation).mockResolvedValue(inProgressConversation as any);
+
+        render(
+            <BrowserRouter>
+                <ConversationView currentUser={currentUser} onLogout={vi.fn()} />
+            </BrowserRouter>
+        );
+
+        await waitFor(() => {
+            expect(screen.getByText('Question 2 of 10')).toBeInTheDocument();
+        });
+
+        const toggle = screen.getByText('Key Insights');
+        await user.click(toggle);
+
+        expect(screen.queryByRole('button', { name: 'Regenerate key insights' })).not.toBeInTheDocument();
+    });
 });

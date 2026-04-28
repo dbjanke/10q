@@ -7,18 +7,45 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 let commands: Command[] | null = null;
+let highlightsPrompt: string | null = null;
+
+interface CommandsConfig {
+  commands: Command[];
+  highlightsPrompt: string;
+}
+
+function loadCommandConfig(): CommandsConfig {
+  const commandsPath = join(__dirname, '../../../config/commands.json');
+  const commandsData = readFileSync(commandsPath, 'utf-8');
+  return JSON.parse(commandsData) as CommandsConfig;
+}
 
 export function loadCommands(): Command[] {
   if (commands) {
     return commands;
   }
 
-  const commandsPath = join(__dirname, '../../../config/commands.json');
-  const commandsData = readFileSync(commandsPath, 'utf-8');
-  const parsed = JSON.parse(commandsData);
+  const parsed = loadCommandConfig();
 
   commands = parsed.commands;
+  highlightsPrompt = parsed.highlightsPrompt;
   return commands!;
+}
+
+export function getHighlightsPrompt(): string {
+  if (highlightsPrompt) {
+    return highlightsPrompt;
+  }
+
+  const parsed = loadCommandConfig();
+  commands = parsed.commands;
+  highlightsPrompt = parsed.highlightsPrompt;
+
+  if (!highlightsPrompt) {
+    throw new Error('No highlightsPrompt found in commands config');
+  }
+
+  return highlightsPrompt;
 }
 
 export function getCommand(questionNumber: number): Command | undefined {

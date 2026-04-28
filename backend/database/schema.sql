@@ -49,7 +49,7 @@ CREATE TABLE IF NOT EXISTS conversations (
 CREATE TABLE IF NOT EXISTS messages (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     conversation_id INTEGER NOT NULL,
-    type TEXT NOT NULL CHECK(type IN ('question', 'response', 'summary')),
+    type TEXT NOT NULL CHECK(type IN ('question', 'response', 'summary', 'highlight')),
     content TEXT NOT NULL,
     question_number INTEGER,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,

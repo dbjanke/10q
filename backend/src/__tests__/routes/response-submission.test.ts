@@ -34,7 +34,61 @@ describe('Routes - Response Submission Resilience', () => {
         vi.clearAllMocks();
     });
 
-    it('returns an explicit message when next question generation fails after saving response', async () => {
+    it('returns an explicit message when next question generation fails after saving response and highlights', async () => {
+        const app = createApp();
+
+        vi.mocked(conversationService.getConversationById).mockReturnValue({
+            id: 1,
+            title: 'Test',
+            summary: null,
+            createdAt: new Date(),
+            completed: false,
+            currentQuestionNumber: 3,
+            messages: [
+                {
+                    id: 10,
+                    conversationId: 1,
+                    type: 'question',
+                    content: 'Question 3?',
+                    questionNumber: 3,
+                    createdAt: new Date(),
+                },
+            ],
+        } as any);
+
+        vi.mocked(conversationService.saveMessage)
+            .mockReturnValueOnce({
+                id: 11,
+                conversationId: 1,
+                type: 'response',
+                content: 'My response',
+                questionNumber: 3,
+                createdAt: new Date(),
+            } as any)
+            .mockReturnValueOnce({
+                id: 12,
+                conversationId: 1,
+                type: 'highlight',
+                content: 'Concise highlights',
+                createdAt: new Date(),
+            } as any);
+
+        vi.mocked(conversationService.getConversationMessages).mockReturnValue([] as any);
+        vi.mocked(openaiService.generateHighlights).mockResolvedValue('Concise highlights');
+        vi.mocked(openaiService.generateQuestion).mockRejectedValue(new Error('insufficient_quota'));
+
+        const response = await request(app)
+            .post('/api/conversations/1/response')
+            .send({ response: 'My response' });
+
+        expect(response.status).toBe(502);
+        expect(response.body.error).toContain('saved');
+        expect(conversationService.saveMessage).toHaveBeenCalledWith(1, 'response', 'My response', 3);
+        expect(conversationService.saveMessage).toHaveBeenCalledWith(1, 'highlight', 'Concise highlights');
+        expect(conversationService.deleteConversationMessagesByType).toHaveBeenCalledWith(1, 'highlight');
+    });
+
+    it('returns an explicit message when highlights generation fails after saving response', async () => {
         const app = createApp();
 
         vi.mocked(conversationService.getConversationById).mockReturnValue({
@@ -67,7 +121,7 @@ describe('Routes - Response Submission Resilience', () => {
             } as any);
 
         vi.mocked(conversationService.getConversationMessages).mockReturnValue([] as any);
-        vi.mocked(openaiService.generateQuestion).mockRejectedValue(new Error('insufficient_quota'));
+        vi.mocked(openaiService.generateHighlights).mockRejectedValue(new Error('timeout'));
 
         const response = await request(app)
             .post('/api/conversations/1/response')
@@ -75,7 +129,8 @@ describe('Routes - Response Submission Resilience', () => {
 
         expect(response.status).toBe(502);
         expect(response.body.error).toContain('saved');
-        expect(conversationService.saveMessage).toHaveBeenCalledWith(1, 'response', 'My response', 3);
+        expect(response.body.error).toContain('highlights');
+        expect(openaiService.generateQuestion).not.toHaveBeenCalled();
     });
 
     it('reuses an already-saved response and returns an existing next question without duplicate writes', async () => {
@@ -124,6 +179,7 @@ describe('Routes - Response Submission Resilience', () => {
         expect(response.body.savedResponse.content).toBe('Saved response');
         expect(response.body.nextQuestion.content).toBe('Question 4?');
         expect(vi.mocked(conversationService.saveMessage)).not.toHaveBeenCalled();
+        expect(vi.mocked(openaiService.generateHighlights)).not.toHaveBeenCalled();
         expect(vi.mocked(openaiService.generateQuestion)).not.toHaveBeenCalled();
     });
 
@@ -158,15 +214,24 @@ describe('Routes - Response Submission Resilience', () => {
         } as any);
 
         vi.mocked(conversationService.getConversationMessages).mockReturnValue([] as any);
+        vi.mocked(openaiService.generateHighlights).mockResolvedValue('Concise highlights');
         vi.mocked(openaiService.generateQuestion).mockResolvedValue('Question 4?');
-        vi.mocked(conversationService.saveMessage).mockReturnValue({
-            id: 12,
-            conversationId: 1,
-            type: 'question',
-            content: 'Question 4?',
-            questionNumber: 4,
-            createdAt: new Date(),
-        } as any);
+        vi.mocked(conversationService.saveMessage)
+            .mockReturnValueOnce({
+                id: 12,
+                conversationId: 1,
+                type: 'highlight',
+                content: 'Concise highlights',
+                createdAt: new Date(),
+            } as any)
+            .mockReturnValueOnce({
+                id: 13,
+                conversationId: 1,
+                type: 'question',
+                content: 'Question 4?',
+                questionNumber: 4,
+                createdAt: new Date(),
+            } as any);
 
         const response = await request(app)
             .post('/api/conversations/1/response')
@@ -179,5 +244,6 @@ describe('Routes - Response Submission Resilience', () => {
             .mocked(conversationService.saveMessage)
             .mock.calls.filter(([, type]) => type === 'response');
         expect(responseWrites).toHaveLength(0);
+        expect(conversationService.deleteConversationMessagesByType).toHaveBeenCalledWith(1, 'highlight');
     });
 });

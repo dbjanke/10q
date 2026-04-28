@@ -131,6 +131,12 @@ export async function regenerateQuestion(conversationId: number): Promise<{ ques
   });
 }
 
+export async function regenerateHighlights(conversationId: number): Promise<{ highlights: Message }> {
+  return fetchApi<{ highlights: Message }>(`/conversations/${conversationId}/regenerate-highlights`, {
+    method: 'POST',
+  });
+}
+
 export async function submitResponse(
   conversationId: number,
   response: string

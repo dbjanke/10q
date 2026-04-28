@@ -1,7 +1,7 @@
 import OpenAI from 'openai';
 import CircuitBreaker from 'opossum';
 import { Message } from '../types.js';
-import { getCommand } from '../config/commands.js';
+import { getCommand, getHighlightsPrompt } from '../config/commands.js';
 import { loadSystemPrompts } from '../config/system-prompt.js';
 import { logger } from '../utils/logger.js';
 import { updateCircuitBreakerMetric } from '../metrics.js';
@@ -18,6 +18,20 @@ const CIRCUIT_BREAKER_VOLUME_THRESHOLD = Number(process.env.OPENAI_CIRCUIT_VOLUM
 const RESPONSE_TEMPERATURE = 0.7;
 const QUESTION_MAX_TOKENS = 150;
 const SUMMARY_MAX_TOKENS = 500;
+const HIGHLIGHTS_MAX_TOKENS = 220;
+
+function buildDiscussionText(conversationHistory: Message[]): string {
+  let conversationText = '';
+  for (const msg of conversationHistory) {
+    if (msg.type === 'question') {
+      conversationText += `Question ${msg.questionNumber}: ${msg.content}\n\n`;
+    } else if (msg.type === 'response') {
+      conversationText += `Response: ${msg.content}\n\n`;
+    }
+  }
+
+  return conversationText.trim();
+}
 
 type ErrorType =
   | 'quota_exceeded'
@@ -37,8 +51,8 @@ function classifyError(error: unknown): ErrorType {
 
   // Check for quota/billing errors
   if (message.includes('insufficient_quota') ||
-      message.includes('quota') ||
-      message.includes('billing')) {
+    message.includes('quota') ||
+    message.includes('billing')) {
     return 'quota_exceeded';
   }
 
@@ -49,8 +63,8 @@ function classifyError(error: unknown): ErrorType {
 
   // Check for auth errors
   if (message.includes('invalid_api_key') ||
-      message.includes('unauthorized') ||
-      message.includes('401')) {
+    message.includes('unauthorized') ||
+    message.includes('401')) {
     return 'invalid_api_key';
   }
 
@@ -61,16 +75,16 @@ function classifyError(error: unknown): ErrorType {
 
   // Check for server errors
   if (message.includes('500') ||
-      message.includes('502') ||
-      message.includes('503') ||
-      message.includes('504')) {
+    message.includes('502') ||
+    message.includes('503') ||
+    message.includes('504')) {
     return 'server_error';
   }
 
   // Check for network errors
   if (message.includes('network') ||
-      message.includes('econnrefused') ||
-      message.includes('enotfound')) {
+    message.includes('econnrefused') ||
+    message.includes('enotfound')) {
     return 'network_error';
   }
 
@@ -212,7 +226,8 @@ export async function checkOpenAiHealth(): Promise<{
 
 export async function generateQuestion(
   conversationHistory: Message[],
-  questionNumber: number
+  questionNumber: number,
+  highlights?: string
 ): Promise<string> {
   const command = getCommand(questionNumber);
   if (!command) {
@@ -253,6 +268,13 @@ export async function generateQuestion(
     }
   }
 
+  if (highlights) {
+    messages.push({
+      role: 'system',
+      content: `# Key Insights:\n${highlights}`,
+    });
+  }
+
   // Add explicit instruction for the current question
   messages.push({
     role: 'user',
@@ -280,18 +302,50 @@ export async function generateQuestion(
   return question;
 }
 
-export async function generateSummary(conversationHistory: Message[]): Promise<string> {
+export async function generateHighlights(conversationHistory: Message[]): Promise<string> {
   const systemPrompts = loadSystemPrompts();
+  const highlightCommandPrompt = getHighlightsPrompt();
+  const conversationText = buildDiscussionText(conversationHistory);
 
-  // Build the full conversation for summary
-  let conversationText = '';
-  for (const msg of conversationHistory) {
-    if (msg.type === 'question') {
-      conversationText += `Question ${msg.questionNumber}: ${msg.content}\n\n`;
-    } else if (msg.type === 'response') {
-      conversationText += `Response: ${msg.content}\n\n`;
-    }
+  const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
+    {
+      role: 'system',
+      content: systemPrompts.highlightsPrompt,
+    },
+    {
+      role: 'user',
+      content: `Here is the discussion so far:\n\n${conversationText}`,
+    },
+    {
+      role: 'system',
+      content: `Current command:\n${highlightCommandPrompt}`,
+    },
+  ];
+
+  const breaker = getCircuitBreaker();
+  const openai = getOpenAIClient();
+
+  const completion = await breaker.fire(async () => {
+    logger.debug('Generating highlights via OpenAI');
+    return openai.chat.completions.create({
+      model: getModel(),
+      messages,
+      temperature: RESPONSE_TEMPERATURE,
+      max_tokens: HIGHLIGHTS_MAX_TOKENS,
+    });
+  }) as OpenAI.Chat.ChatCompletion;
+
+  const highlights = completion.choices[0]?.message?.content?.trim();
+  if (!highlights) {
+    throw new Error('Failed to generate highlights from OpenAI');
   }
+
+  return highlights;
+}
+
+export async function generateSummary(conversationHistory: Message[], highlights?: string): Promise<string> {
+  const systemPrompts = loadSystemPrompts();
+  const conversationText = buildDiscussionText(conversationHistory);
 
   const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
     {
@@ -300,9 +354,21 @@ export async function generateSummary(conversationHistory: Message[]): Promise<s
     },
     {
       role: 'user',
-      content: `Here is the complete conversation:\n\n${conversationText}\n\nPlease provide a cohesive 2-3 paragraph summary.`,
+      content: `Here is the complete conversation:\n\n${conversationText}`,
     },
   ];
+
+  if (highlights) {
+    messages.push({
+      role: 'system',
+      content: `# Key Insights:\n${highlights}`,
+    });
+  }
+
+  messages.push({
+    role: 'user',
+    content: 'Please provide a cohesive 2-3 paragraph summary.',
+  });
 
   const breaker = getCircuitBreaker();
   const openai = getOpenAIClient();

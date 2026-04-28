@@ -56,10 +56,26 @@ describe('Routes - Regenerate', () => {
             createdAt: new Date(),
             completed: true,
             currentQuestionNumber: 10,
-            messages: [],
+            messages: [
+                {
+                    id: 2,
+                    conversationId: 1,
+                    type: 'highlight',
+                    content: 'Latest highlights',
+                    createdAt: new Date(),
+                },
+            ],
         } as any);
 
-        vi.mocked(conversationService.getConversationMessages).mockReturnValue([] as any);
+        vi.mocked(conversationService.getConversationMessages).mockReturnValue([
+            {
+                id: 2,
+                conversationId: 1,
+                type: 'highlight',
+                content: 'Latest highlights',
+                createdAt: new Date(),
+            },
+        ] as any);
         vi.mocked(openaiService.generateSummary).mockResolvedValue('New summary');
         vi.mocked(conversationService.saveMessage).mockReturnValue({
             id: 1,
@@ -142,5 +158,81 @@ describe('Routes - Regenerate', () => {
         expect(response.status).toBe(200);
         expect(response.body.question.content).toBe('New question');
         expect(conversationService.deleteQuestionMessage).toHaveBeenCalledWith(1, 2);
+    });
+
+    it('should regenerate highlights for a conversation with responses', async () => {
+        const app = createApp(['regenerate_highlights']);
+
+        vi.mocked(conversationService.getConversationById).mockReturnValue({
+            id: 1,
+            title: 'Test',
+            summary: null,
+            createdAt: new Date(),
+            completed: false,
+            currentQuestionNumber: 2,
+            messages: [],
+        } as any);
+
+        vi.mocked(conversationService.getConversationMessages).mockReturnValue([
+            {
+                id: 1,
+                conversationId: 1,
+                type: 'response',
+                content: 'A response',
+                questionNumber: 1,
+                createdAt: new Date(),
+            },
+        ] as any);
+        vi.mocked(openaiService.generateHighlights).mockResolvedValue('Refined highlights');
+        vi.mocked(conversationService.saveMessage).mockReturnValue({
+            id: 2,
+            conversationId: 1,
+            type: 'highlight',
+            content: 'Refined highlights',
+            createdAt: new Date(),
+        } as any);
+
+        const response = await request(app).post('/api/conversations/1/regenerate-highlights');
+
+        expect(response.status).toBe(200);
+        expect(response.body.highlights.content).toBe('Refined highlights');
+        expect(conversationService.deleteConversationMessagesByType).toHaveBeenCalledWith(1, 'highlight');
+    });
+
+    it('should reject regenerate highlights without permission', async () => {
+        const app = createApp([]);
+        const response = await request(app).post('/api/conversations/1/regenerate-highlights');
+
+        expect(response.status).toBe(403);
+    });
+
+    it('should reject regenerate highlights when there are no responses', async () => {
+        const app = createApp(['regenerate_highlights']);
+
+        vi.mocked(conversationService.getConversationById).mockReturnValue({
+            id: 1,
+            title: 'Test',
+            summary: null,
+            createdAt: new Date(),
+            completed: false,
+            currentQuestionNumber: 1,
+            messages: [],
+        } as any);
+
+        vi.mocked(conversationService.getConversationMessages).mockReturnValue([
+            {
+                id: 1,
+                conversationId: 1,
+                type: 'question',
+                content: 'Q1',
+                questionNumber: 1,
+                createdAt: new Date(),
+            },
+        ] as any);
+
+        const response = await request(app).post('/api/conversations/1/regenerate-highlights');
+
+        expect(response.status).toBe(400);
+        expect(response.body.error).toContain('No responses');
     });
 });

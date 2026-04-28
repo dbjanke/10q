@@ -33,7 +33,7 @@ export interface User {
 export interface Message {
   id: number;
   conversationId: number;
-  type: 'question' | 'response' | 'summary';
+  type: 'question' | 'response' | 'summary' | 'highlight';
   content: string;
   questionNumber?: number;
   createdAt: Date;
@@ -49,6 +49,7 @@ export interface Command {
 export interface SystemPrompts {
   questionPrompt: string;
   summaryPrompt: string;
+  highlightsPrompt: string;
 }
 
 export interface ConversationWithMessages extends Conversation {

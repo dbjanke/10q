@@ -1,10 +1,11 @@
 {
+  "highlightsPrompt": "Generate a concise list of highlights from the discussion.\n\n- Use a single bullet list (no sections)\n- 3–10 bullets depending on signal strength\n- Each bullet = one distinct, non-obvious insight\n- Avoid repetition or paraphrasing\n- Keep phrasing tight and concrete",
   "commands": [
     {
       "number": 1,
       "name": "Set the focus and stakes",
       "prompt": "Ask a question that clarifies what the user wants to explore, why it matters to them right now, and what prompted this line of thinking.",
-      "staticQuestion": "Why does this topic feel important to you right now?"
+      "staticQuestion": "What's something you're wrestling with, and what feels true about it that you can't fully explain yet?"
     },
     {
       "number": 2,

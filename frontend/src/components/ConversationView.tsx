@@ -36,6 +36,7 @@ export default function ConversationView({ currentUser, onLogout }: Conversation
   const [submitting, setSubmitting] = useState(false);
   const [regeneratingSummary, setRegeneratingSummary] = useState(false);
   const [regeneratingQuestion, setRegeneratingQuestion] = useState(false);
+  const [regeneratingHighlights, setRegeneratingHighlights] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const topRef = useRef<HTMLDivElement>(null);
@@ -147,6 +148,23 @@ export default function ConversationView({ currentUser, onLogout }: Conversation
     }
   }
 
+  async function handleRegenerateHighlights() {
+    if (!conversation) return;
+
+    try {
+      setRegeneratingHighlights(true);
+      setError(null);
+
+      await api.regenerateHighlights(conversation.id);
+      await loadConversation(conversation.id);
+    } catch (err) {
+      setError('Failed to regenerate key insights');
+      console.error(err);
+    } finally {
+      setRegeneratingHighlights(false);
+    }
+  }
+
   if (loading) {
     return (
       <div className="page">
@@ -178,6 +196,9 @@ export default function ConversationView({ currentUser, onLogout }: Conversation
   const questions = conversation.messages.filter((m) => m.type === 'question');
   const responses = conversation.messages.filter((m) => m.type === 'response');
   const summaryMessage = conversation.messages.find((m) => m.type === 'summary');
+  const latestHighlight = [...conversation.messages]
+    .reverse()
+    .find((m) => m.type === 'highlight');
 
   for (const question of questions) {
     const response = responses.find((r) => r.questionNumber === question.questionNumber);
@@ -187,6 +208,7 @@ export default function ConversationView({ currentUser, onLogout }: Conversation
   const currentQuestion = questionPairs.find((pair) => !pair.response)?.question;
   const isComplete = conversation.completed;
   const canRegenerate = currentUser.permissions?.includes('regenerate_summary_question') || false;
+  const canRegenerateHighlights = currentUser.permissions?.includes('regenerate_highlights') || false;
 
   return (
     <div className="page">
@@ -296,6 +318,54 @@ export default function ConversationView({ currentUser, onLogout }: Conversation
                       </button>
                     </div>
                   )}
+
+                  <details className="card">
+                    <summary className="details-summary">
+                      <span>Key Insights</span>
+                      <svg
+                        width="20"
+                        height="20"
+                        fill="none"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path d="M19 9l-7 7-7-7"></path>
+                      </svg>
+                    </summary>
+                    <div className="stack" style={{ padding: '0 18px 18px', gap: 12 }}>
+                      {canRegenerateHighlights && (
+                        <div className="row" style={{ justifyContent: 'flex-end' }}>
+                          <button
+                            className="btn btn-ghost"
+                            onClick={handleRegenerateHighlights}
+                            disabled={regeneratingHighlights || submitting}
+                          >
+                            {regeneratingHighlights ? 'Regenerating...' : 'Regenerate key insights'}
+                          </button>
+                        </div>
+                      )}
+                      {latestHighlight ? (
+                        <pre
+                          style={{
+                            margin: 0,
+                            whiteSpace: 'pre-wrap',
+                            fontFamily: 'inherit',
+                            lineHeight: 1.5,
+                          }}
+                        >
+                          {latestHighlight.content}
+                        </pre>
+                      ) : (
+                        <p className="muted" style={{ margin: 0 }}>
+                          No key insights yet. Submit a response or regenerate key insights.
+                        </p>
+                      )}
+                    </div>
+                  </details>
+
                   <ResponseInput onSubmit={handleResponseSubmit} disabled={submitting} />
                 </div>
               )

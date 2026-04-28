@@ -1,5 +1,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { generateQuestion, generateSummary, checkOpenAiHealth, getCircuitBreakerState } from '../../services/openai.service.js';
+import {
+    generateQuestion,
+    generateSummary,
+    generateHighlights,
+    checkOpenAiHealth,
+    getCircuitBreakerState,
+} from '../../services/openai.service.js';
 import { Message } from '../../types.js';
 import * as commandsModule from '../../config/commands.js';
 import * as systemPromptModule from '../../config/system-prompt.js';
@@ -105,7 +111,9 @@ describe('openai.service', () => {
         vi.mocked(systemPromptModule.loadSystemPrompts).mockReturnValue({
             questionPrompt: 'You are a thoughtful guide.',
             summaryPrompt: 'Create a summary.',
+            highlightsPrompt: 'Extract compact highlights.',
         });
+        vi.mocked(commandsModule.getHighlightsPrompt).mockReturnValue('Use these highlight sections');
     });
 
     afterEach(() => {
@@ -294,6 +302,35 @@ describe('openai.service', () => {
             const summary = await generateSummary(messages);
 
             expect(summary).toBe('Generated question from OpenAI?');
+            expect(systemPromptModule.loadSystemPrompts).toHaveBeenCalled();
+        });
+    });
+
+    describe('generateHighlights', () => {
+        it('should generate compact highlights from conversation messages', async () => {
+            const messages: Message[] = [
+                {
+                    id: 1,
+                    conversationId: 1,
+                    type: 'question',
+                    content: 'What matters most?',
+                    questionNumber: 1,
+                    createdAt: new Date(),
+                },
+                {
+                    id: 2,
+                    conversationId: 1,
+                    type: 'response',
+                    content: 'I keep returning to long-term trust.',
+                    questionNumber: 1,
+                    createdAt: new Date(),
+                },
+            ];
+
+            const highlights = await generateHighlights(messages);
+
+            expect(highlights).toBe('Generated question from OpenAI?');
+            expect(commandsModule.getHighlightsPrompt).toHaveBeenCalled();
             expect(systemPromptModule.loadSystemPrompts).toHaveBeenCalled();
         });
     });

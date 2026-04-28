@@ -193,6 +193,38 @@ describe('useApi', () => {
         });
     });
 
+    describe('regenerateHighlights', () => {
+        it('should post to regenerate highlights endpoint', async () => {
+            (global.fetch as any)
+                .mockResolvedValueOnce(mockFetchSuccess({ csrfToken: 'test-token' }))
+                .mockResolvedValueOnce(
+                    mockFetchSuccess({
+                        highlights: {
+                            id: 9,
+                            conversationId: 1,
+                            type: 'highlight',
+                            content: 'Latest highlights',
+                            createdAt: new Date().toISOString(),
+                        },
+                    })
+                );
+
+            const result = await api.regenerateHighlights(1);
+
+            expect(global.fetch).toHaveBeenNthCalledWith(1, '/api/auth/csrf', {
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+            });
+            expect(global.fetch).toHaveBeenNthCalledWith(2, '/api/conversations/1/regenerate-highlights', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': 'test-token' },
+                credentials: 'include',
+            });
+
+            expect(result.highlights.type).toBe('highlight');
+        });
+    });
+
     describe('submitResponse', () => {
         it('should submit a response and get next question', async () => {
             (global.fetch as any)

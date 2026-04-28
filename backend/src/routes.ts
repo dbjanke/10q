@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import * as conversationService from './services/conversation.service.js';
 import * as openaiService from './services/openai.service.js';
 import * as exportService from './services/export.service.js';
-import { CreateConversationRequest, SubmitResponseRequest } from './types.js';
+import { CreateConversationRequest, SubmitResponseRequest, Message } from './types.js';
 import { MAX_TITLE_LENGTH, MAX_RESPONSE_LENGTH } from './config/validation.js';
 import { getConversationStore } from './stores/conversation.store.js';
 import { rateLimit } from './middleware/rateLimit.js';
@@ -11,7 +11,6 @@ import { requireAuth } from './middleware/auth.js';
 import { requirePermission } from './middleware/permissions.js';
 import { parseIdParam } from './utils/params.js';
 import { logger } from './utils/logger.js';
-import { Message } from './types.js';
 
 const router = Router();
 
@@ -29,6 +28,12 @@ const responseConcurrencyLimit = concurrencyLimit({
 });
 
 const REGENERATE_PERMISSION = 'regenerate_summary_question' as const;
+
+function getLatestHighlightContent(messages: Message[]): string | undefined {
+  const highlights = messages.filter((message) => message.type === 'highlight');
+  const latestHighlight = highlights[highlights.length - 1];
+  return latestHighlight?.content;
+}
 
 // Liveness probe
 router.get('/ping', (_req: Request, res: Response) => {
@@ -97,7 +102,8 @@ router.post(
       }
 
       const messages = conversationService.getConversationMessages(id);
-      const summary = await openaiService.generateSummary(messages);
+      const latestHighlightContent = getLatestHighlightContent(messages);
+      const summary = await openaiService.generateSummary(messages, latestHighlightContent);
 
       conversationService.deleteConversationMessagesByType(id, 'summary');
       const summaryMessage = conversationService.saveMessage(id, 'summary', summary);
@@ -152,7 +158,13 @@ router.post(
         return message.type !== 'question' && message.type !== 'response';
       });
 
-      const nextQuestion = await openaiService.generateQuestion(history, currentQuestionNumber);
+      const latestHighlightContent = getLatestHighlightContent(conversation.messages);
+
+      const nextQuestion = await openaiService.generateQuestion(
+        history,
+        currentQuestionNumber,
+        latestHighlightContent
+      );
 
       conversationService.deleteQuestionMessage(id, currentQuestionNumber);
       const questionMessage = conversationService.saveMessage(
@@ -168,6 +180,41 @@ router.post(
     } catch (error) {
       logger.error({ err: error }, 'Error regenerating question');
       return res.status(500).json({ error: 'Failed to regenerate question' });
+    }
+  }
+);
+
+router.post(
+  '/conversations/:id/regenerate-highlights',
+  requirePermission('regenerate_highlights'),
+  async (req: Request, res: Response) => {
+    try {
+      const userId = req.user!.id;
+      const id = parseIdParam(req.params.id);
+
+      if (isNaN(id)) {
+        return res.status(400).json({ error: 'Invalid conversation ID' });
+      }
+
+      const conversation = conversationService.getConversationById(userId, id);
+      if (!conversation) {
+        return res.status(404).json({ error: 'Conversation not found' });
+      }
+
+      const messages = conversationService.getConversationMessages(id);
+      const hasResponse = messages.some((message) => message.type === 'response');
+      if (!hasResponse) {
+        return res.status(400).json({ error: 'No responses available to generate highlights' });
+      }
+
+      const highlights = await openaiService.generateHighlights(messages);
+      conversationService.deleteConversationMessagesByType(id, 'highlight');
+      const highlightMessage = conversationService.saveMessage(id, 'highlight', highlights);
+
+      return res.json({ highlights: highlightMessage });
+    } catch (error) {
+      logger.error({ err: error }, 'Error regenerating highlights');
+      return res.status(502).json({ error: 'Failed to regenerate highlights' });
     }
   }
 );
@@ -357,12 +404,27 @@ router.post(
         );
       }
 
+      let latestHighlightsContent: string;
+      try {
+        const messages = conversationService.getConversationMessages(id);
+        const highlights = await openaiService.generateHighlights(messages);
+        conversationService.deleteConversationMessagesByType(id, 'highlight');
+        const highlightMessage = conversationService.saveMessage(id, 'highlight', highlights);
+        latestHighlightsContent = highlightMessage.content;
+      } catch (error) {
+        logger.error({ err: error, conversationId: id }, 'Highlights generation failed after saving response');
+        return res.status(502).json({
+          error:
+            'Your response was saved, but we could not generate highlights. Please retry or use regenerate highlights.',
+        });
+      }
+
       // Check if we've completed all 10 questions
       if (currentQuestionNumber >= 10) {
         try {
           // Generate summary
           const messages = conversationService.getConversationMessages(id);
-          const summary = await openaiService.generateSummary(messages);
+          const summary = await openaiService.generateSummary(messages, latestHighlightsContent);
 
           // Save summary
           conversationService.saveMessage(id, 'summary', summary);
@@ -385,7 +447,11 @@ router.post(
       // Generate next question
       try {
         const messages = conversationService.getConversationMessages(id);
-        const nextQuestion = await openaiService.generateQuestion(messages, nextQuestionNumber);
+        const nextQuestion = await openaiService.generateQuestion(
+          messages,
+          nextQuestionNumber,
+          latestHighlightsContent
+        );
 
         // Save next question
         const questionMessage = conversationService.saveMessage(

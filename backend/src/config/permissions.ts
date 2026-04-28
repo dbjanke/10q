@@ -1,4 +1,4 @@
-export const PERMISSIONS = ['regenerate_summary_question'] as const;
+export const PERMISSIONS = ['regenerate_summary_question', 'regenerate_highlights'] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
 

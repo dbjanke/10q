@@ -135,6 +135,7 @@ describe('Routes - Validation', () => {
 
     describe('POST /conversations/:id/response - Response Validation', () => {
         beforeEach(() => {
+            vi.clearAllMocks();
             vi.mocked(conversationService.getConversationById).mockReturnValue({
                 id: 1,
                 title: 'Test',
@@ -188,6 +189,33 @@ describe('Routes - Validation', () => {
                 createdAt: new Date().toISOString(),
             });
 
+            vi.mocked(conversationService.getConversationMessages).mockReturnValue([] as any);
+            vi.mocked(openaiService.generateHighlights).mockResolvedValue('Highlights');
+            vi.mocked(conversationService.saveMessage)
+                .mockReturnValueOnce({
+                    id: 1,
+                    conversationId: 1,
+                    type: 'response',
+                    content: exactLengthResponse,
+                    questionNumber: 5,
+                    createdAt: new Date().toISOString(),
+                } as any)
+                .mockReturnValueOnce({
+                    id: 2,
+                    conversationId: 1,
+                    type: 'highlight',
+                    content: 'Highlights',
+                    createdAt: new Date().toISOString(),
+                } as any)
+                .mockReturnValueOnce({
+                    id: 3,
+                    conversationId: 1,
+                    type: 'question',
+                    content: 'Next question?',
+                    questionNumber: 6,
+                    createdAt: new Date().toISOString(),
+                } as any);
+
             vi.mocked(openaiService.generateQuestion).mockResolvedValue('Next question?');
 
             vi.mocked(conversationService.updateConversationProgress).mockReturnValue(undefined);
@@ -210,6 +238,33 @@ describe('Routes - Validation', () => {
                 questionNumber: 5,
                 createdAt: new Date().toISOString(),
             });
+
+            vi.mocked(conversationService.getConversationMessages).mockReturnValue([] as any);
+            vi.mocked(openaiService.generateHighlights).mockResolvedValue('Highlights');
+            vi.mocked(conversationService.saveMessage)
+                .mockReturnValueOnce({
+                    id: 1,
+                    conversationId: 1,
+                    type: 'response',
+                    content: validResponse,
+                    questionNumber: 5,
+                    createdAt: new Date().toISOString(),
+                } as any)
+                .mockReturnValueOnce({
+                    id: 2,
+                    conversationId: 1,
+                    type: 'highlight',
+                    content: 'Highlights',
+                    createdAt: new Date().toISOString(),
+                } as any)
+                .mockReturnValueOnce({
+                    id: 3,
+                    conversationId: 1,
+                    type: 'question',
+                    content: 'Next question?',
+                    questionNumber: 6,
+                    createdAt: new Date().toISOString(),
+                } as any);
 
             vi.mocked(openaiService.generateQuestion).mockResolvedValue('Next question?');
 

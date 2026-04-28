@@ -207,6 +207,19 @@ describe('conversation.service', () => {
             expect(message.type).toBe('summary');
             expect(message.questionNumber).toBeUndefined();
         });
+
+        it('should save a highlight message without question number', () => {
+            const userId = createTestUser(mockDb);
+            const conversation = conversationService.createConversation(userId, 'Test');
+            const message = conversationService.saveMessage(
+                conversation.id,
+                'highlight',
+                'Latest highlights'
+            );
+
+            expect(message.type).toBe('highlight');
+            expect(message.questionNumber).toBeUndefined();
+        });
     });
 
     describe('updateConversationProgress', () => {
