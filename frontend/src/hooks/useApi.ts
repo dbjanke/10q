@@ -119,6 +119,13 @@ export async function deleteConversation(id: number): Promise<void> {
   });
 }
 
+export async function updateConversationTitle(id: number, title: string): Promise<{ title: string }> {
+  return fetchApi<{ title: string }>(`/conversations/${id}/title`, {
+    method: 'PATCH',
+    body: JSON.stringify({ title }),
+  });
+}
+
 export async function regenerateSummary(conversationId: number): Promise<{ summary: string }> {
   return fetchApi<{ summary: string }>(`/conversations/${conversationId}/regenerate-summary`, {
     method: 'POST',

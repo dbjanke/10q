@@ -15,7 +15,7 @@ const mockHighlight: Message = {
 describe('KeyInsights', () => {
     it('renders highlight content when a highlight is provided', () => {
         render(<KeyInsights highlight={mockHighlight} />);
-        expect(screen.getByText('- Key point one\n- Key point two')).toBeInTheDocument();
+        expect(screen.getByText((_, el) => el?.tagName === 'PRE' && el.textContent === mockHighlight.content)).toBeInTheDocument();
     });
 
     it('renders empty state when no highlight is provided', () => {

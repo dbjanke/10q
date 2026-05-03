@@ -38,6 +38,10 @@ export function updateConversationSummary(conversationId: number, summary: strin
   getConversationStore().updateConversationSummary(conversationId, summary);
 }
 
+export function updateConversationTitle(conversationId: number, title: string): void {
+  getConversationStore().updateConversationTitle(conversationId, title);
+}
+
 export function getConversationMessages(conversationId: number): Message[] {
   return getConversationStore().getConversationMessages(conversationId);
 }

@@ -136,6 +136,14 @@ export class SQLiteConversationStore implements ConversationStore {
         );
     }
 
+    updateConversationTitle(conversationId: number, title: string): void {
+        const db = getDatabase();
+
+        withTiming('conversations.updateTitle', () =>
+            db.prepare('UPDATE conversations SET title = ? WHERE id = ?').run(title, conversationId)
+        );
+    }
+
     getConversationMessages(conversationId: number): Message[] {
         const db = getDatabase();
 

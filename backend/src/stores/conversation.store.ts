@@ -18,6 +18,7 @@ export interface ConversationStore {
         completed?: boolean
     ): void;
     updateConversationSummary(conversationId: number, summary: string): void;
+    updateConversationTitle(conversationId: number, title: string): void;
     getConversationMessages(conversationId: number): Message[];
     deleteConversationMessagesByType(
         conversationId: number,

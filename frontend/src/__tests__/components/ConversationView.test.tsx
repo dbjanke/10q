@@ -542,4 +542,173 @@ describe('ConversationView - Completion Flow', () => {
 
         expect(screen.queryByRole('button', { name: 'Regenerate key insights' })).not.toBeInTheDocument();
     });
+
+    it('shows an edit button next to the title', async () => {
+        const inProgressConversation = {
+            id: 1,
+            title: 'My Conversation',
+            summary: null,
+            createdAt: new Date().toISOString(),
+            completed: false,
+            currentQuestionNumber: 1,
+            messages: [
+                {
+                    id: 1,
+                    conversationId: 1,
+                    type: 'question',
+                    content: 'Question 1?',
+                    questionNumber: 1,
+                    createdAt: new Date().toISOString(),
+                },
+            ],
+        };
+
+        vi.mocked(api.getConversation).mockResolvedValue(inProgressConversation as any);
+
+        render(
+            <BrowserRouter>
+                <ConversationView currentUser={currentUser} onLogout={vi.fn()} />
+            </BrowserRouter>
+        );
+
+        await waitFor(() => {
+            expect(screen.getByText('My Conversation')).toBeInTheDocument();
+        });
+
+        expect(screen.getByTitle('Edit title')).toBeInTheDocument();
+    });
+
+    it('shows an inline input when the edit title button is clicked', async () => {
+        const user = userEvent.setup();
+
+        const inProgressConversation = {
+            id: 1,
+            title: 'My Conversation',
+            summary: null,
+            createdAt: new Date().toISOString(),
+            completed: false,
+            currentQuestionNumber: 1,
+            messages: [
+                {
+                    id: 1,
+                    conversationId: 1,
+                    type: 'question',
+                    content: 'Question 1?',
+                    questionNumber: 1,
+                    createdAt: new Date().toISOString(),
+                },
+            ],
+        };
+
+        vi.mocked(api.getConversation).mockResolvedValue(inProgressConversation as any);
+
+        render(
+            <BrowserRouter>
+                <ConversationView currentUser={currentUser} onLogout={vi.fn()} />
+            </BrowserRouter>
+        );
+
+        await waitFor(() => {
+            expect(screen.getByText('My Conversation')).toBeInTheDocument();
+        });
+
+        await user.click(screen.getByTitle('Edit title'));
+
+        expect(screen.getByRole('textbox')).toHaveValue('My Conversation');
+        expect(screen.getByRole('button', { name: 'Save' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
+    });
+
+    it('saves the new title on Save click', async () => {
+        const user = userEvent.setup();
+
+        const inProgressConversation = {
+            id: 1,
+            title: 'My Conversation',
+            summary: null,
+            createdAt: new Date().toISOString(),
+            completed: false,
+            currentQuestionNumber: 1,
+            messages: [
+                {
+                    id: 1,
+                    conversationId: 1,
+                    type: 'question',
+                    content: 'Question 1?',
+                    questionNumber: 1,
+                    createdAt: new Date().toISOString(),
+                },
+            ],
+        };
+
+        vi.mocked(api.getConversation).mockResolvedValue(inProgressConversation as any);
+        vi.mocked(api.updateConversationTitle).mockResolvedValue({ title: 'Updated Title' });
+
+        render(
+            <BrowserRouter>
+                <ConversationView currentUser={currentUser} onLogout={vi.fn()} />
+            </BrowserRouter>
+        );
+
+        await waitFor(() => {
+            expect(screen.getByText('My Conversation')).toBeInTheDocument();
+        });
+
+        await user.click(screen.getByTitle('Edit title'));
+
+        const input = screen.getByRole('textbox');
+        await user.clear(input);
+        await user.type(input, 'Updated Title');
+        await user.click(screen.getByRole('button', { name: 'Save' }));
+
+        await waitFor(() => {
+            expect(api.updateConversationTitle).toHaveBeenCalledWith(1, 'Updated Title');
+        });
+
+        expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+        expect(screen.getByText('Updated Title')).toBeInTheDocument();
+    });
+
+    it('cancels editing without saving on Cancel click', async () => {
+        const user = userEvent.setup();
+
+        const inProgressConversation = {
+            id: 1,
+            title: 'My Conversation',
+            summary: null,
+            createdAt: new Date().toISOString(),
+            completed: false,
+            currentQuestionNumber: 1,
+            messages: [
+                {
+                    id: 1,
+                    conversationId: 1,
+                    type: 'question',
+                    content: 'Question 1?',
+                    questionNumber: 1,
+                    createdAt: new Date().toISOString(),
+                },
+            ],
+        };
+
+        vi.mocked(api.getConversation).mockResolvedValue(inProgressConversation as any);
+
+        render(
+            <BrowserRouter>
+                <ConversationView currentUser={currentUser} onLogout={vi.fn()} />
+            </BrowserRouter>
+        );
+
+        await waitFor(() => {
+            expect(screen.getByText('My Conversation')).toBeInTheDocument();
+        });
+
+        await user.click(screen.getByTitle('Edit title'));
+        await user.clear(screen.getByRole('textbox'));
+        await user.type(screen.getByRole('textbox'), 'Changed but cancel');
+        await user.click(screen.getByRole('button', { name: 'Cancel' }));
+
+        expect(api.updateConversationTitle).not.toHaveBeenCalled();
+        expect(screen.getByText('My Conversation')).toBeInTheDocument();
+    });
 });

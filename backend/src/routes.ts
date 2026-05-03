@@ -320,6 +320,41 @@ router.delete('/conversations/:id', (req: Request, res: Response) => {
   }
 });
 
+router.patch('/conversations/:id/title', (req: Request, res: Response) => {
+  try {
+    const userId = req.user!.id;
+    const id = parseIdParam(req.params.id);
+
+    if (isNaN(id)) {
+      return res.status(400).json({ error: 'Invalid conversation ID' });
+    }
+
+    const { title } = req.body as { title: string };
+
+    if (!title || title.trim().length === 0) {
+      return res.status(400).json({ error: 'Title is required' });
+    }
+
+    if (title.length > MAX_TITLE_LENGTH) {
+      return res.status(400).json({
+        error: `Title too long. Maximum length is ${MAX_TITLE_LENGTH} characters.`,
+      });
+    }
+
+    const conversation = conversationService.getConversationById(userId, id);
+    if (!conversation) {
+      return res.status(404).json({ error: 'Conversation not found' });
+    }
+
+    conversationService.updateConversationTitle(id, title.trim());
+
+    return res.json({ title: title.trim() });
+  } catch (error) {
+    logger.error({ err: error }, 'Error updating conversation title');
+    return res.status(500).json({ error: 'Failed to update title' });
+  }
+});
+
 // Submit response and get next question
 router.post(
   '/conversations/:id/response',

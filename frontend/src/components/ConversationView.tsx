@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ConversationWithMessages, Message, User } from '../types';
 import * as api from '../hooks/useApi';
+import { MAX_TITLE_LENGTH } from '../config/validation';
 import QuestionCard from './QuestionCard';
 import ResponseInput from './ResponseInput';
 import Summary from './Summary';
@@ -38,6 +39,9 @@ export default function ConversationView({ currentUser, onLogout }: Conversation
   const [regeneratingSummary, setRegeneratingSummary] = useState(false);
   const [regeneratingQuestion, setRegeneratingQuestion] = useState(false);
   const [regeneratingHighlights, setRegeneratingHighlights] = useState(false);
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [titleDraft, setTitleDraft] = useState('');
+  const [savingTitle, setSavingTitle] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const topRef = useRef<HTMLDivElement>(null);
@@ -113,6 +117,39 @@ export default function ConversationView({ currentUser, onLogout }: Conversation
     } finally {
       setSubmitting(false);
     }
+  }
+
+  function handleTitleEdit() {
+    if (!conversation) return;
+    setTitleDraft(conversation.title);
+    setEditingTitle(true);
+  }
+
+  async function handleTitleSave() {
+    if (!conversation) return;
+    const trimmed = titleDraft.trim();
+    if (!trimmed || trimmed === conversation.title) {
+      setEditingTitle(false);
+      return;
+    }
+
+    try {
+      setSavingTitle(true);
+      setError(null);
+      await api.updateConversationTitle(conversation.id, trimmed);
+      setConversation((prev) => prev ? { ...prev, title: trimmed } : prev);
+      setEditingTitle(false);
+    } catch (err) {
+      setError('Failed to update title');
+      console.error(err);
+    } finally {
+      setSavingTitle(false);
+    }
+  }
+
+  function handleTitleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === 'Enter') handleTitleSave();
+    if (e.key === 'Escape') setEditingTitle(false);
   }
 
   async function handleRegenerateSummary() {
@@ -227,7 +264,48 @@ export default function ConversationView({ currentUser, onLogout }: Conversation
           >
             ← Back to Dashboard
           </button>
-          <h1 className="section-title">{conversation.title}</h1>
+          {editingTitle ? (
+            <div className="row" style={{ alignItems: 'center', gap: 8, marginTop: 8 }}>
+              <input
+                className="input"
+                value={titleDraft}
+                onChange={(e) => setTitleDraft(e.target.value)}
+                onKeyDown={handleTitleKeyDown}
+                maxLength={MAX_TITLE_LENGTH}
+                autoFocus
+                style={{ fontSize: 22, fontWeight: 700, flex: 1 }}
+              />
+              <button
+                className="btn btn-primary"
+                onClick={handleTitleSave}
+                disabled={savingTitle || !titleDraft.trim()}
+              >
+                {savingTitle ? 'Saving...' : 'Save'}
+              </button>
+              <button
+                className="btn btn-ghost"
+                onClick={() => setEditingTitle(false)}
+                disabled={savingTitle}
+              >
+                Cancel
+              </button>
+            </div>
+          ) : (
+            <div className="row" style={{ alignItems: 'center', gap: 8 }}>
+              <h1 className="section-title" style={{ margin: 0 }}>{conversation.title}</h1>
+              <button
+                className="btn btn-ghost"
+                onClick={handleTitleEdit}
+                title="Edit title"
+                style={{ padding: '4px 8px' }}
+              >
+                <svg width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                  <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
+                  <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
+                </svg>
+              </button>
+            </div>
+          )}
           <p className="section-subtitle">
             {isComplete
               ? 'Completed'
