@@ -50,7 +50,7 @@
     {
       "number": 10,
       "name": "Extend the consequence",
-      "prompt": "Take the user's sharpened position on the original issue as true, and identify one concrete consequence of it being true that the user has not yet faced — something it implies, demands, or predicts about the world, the people they are writing for, or the broader situation, not about the user's own process; press them on that specific consequence; the consequence should complicate their position rather than celebrate it, making the issue feel larger or less settled than before; do not ask the user to identify the consequence, name it in the question and make them reckon with it."
+      "prompt": "Take the user's sharpened position on the original core issue as true, and identify one concrete consequence of it that the user has not addressed, something under-explored: something the original view implies, demands, or predicts about the world or the broader situation. This is NOTt about the user's own process. Press them on that specific consequence. The consequence should complicate their position rather than celebrate it, making the issue feel larger or less settled than before; do not ask the user to identify the consequence, name it in the question and make them reckon with it."
     }
   ]
 }

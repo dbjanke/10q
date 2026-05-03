@@ -5,6 +5,7 @@ import * as api from '../hooks/useApi';
 import QuestionCard from './QuestionCard';
 import ResponseInput from './ResponseInput';
 import Summary from './Summary';
+import KeyInsights from './KeyInsights';
 import LoadingIndicator from './LoadingIndicator';
 import AppHeader from './AppHeader';
 
@@ -256,6 +257,16 @@ export default function ConversationView({ currentUser, onLogout }: Conversation
               onRegenerate={handleRegenerateSummary}
             />
 
+            {/* Key Insights */}
+            <div style={{ marginTop: 20 }}>
+              <KeyInsights
+                highlight={latestHighlight}
+                canRegenerate={canRegenerateHighlights}
+                regenerating={regeneratingHighlights}
+                onRegenerate={handleRegenerateHighlights}
+              />
+            </div>
+
             {/* Collapsed conversation history */}
             <details className="card" style={{ marginTop: 20 }}>
               <summary className="details-summary">
@@ -319,52 +330,13 @@ export default function ConversationView({ currentUser, onLogout }: Conversation
                     </div>
                   )}
 
-                  <details className="card">
-                    <summary className="details-summary">
-                      <span>Key Insights</span>
-                      <svg
-                        width="20"
-                        height="20"
-                        fill="none"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="2"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path d="M19 9l-7 7-7-7"></path>
-                      </svg>
-                    </summary>
-                    <div className="stack" style={{ padding: '0 18px 18px', gap: 12 }}>
-                      {canRegenerateHighlights && (
-                        <div className="row" style={{ justifyContent: 'flex-end' }}>
-                          <button
-                            className="btn btn-ghost"
-                            onClick={handleRegenerateHighlights}
-                            disabled={regeneratingHighlights || submitting}
-                          >
-                            {regeneratingHighlights ? 'Regenerating...' : 'Regenerate key insights'}
-                          </button>
-                        </div>
-                      )}
-                      {latestHighlight ? (
-                        <pre
-                          style={{
-                            margin: 0,
-                            whiteSpace: 'pre-wrap',
-                            fontFamily: 'inherit',
-                            lineHeight: 1.5,
-                          }}
-                        >
-                          {latestHighlight.content}
-                        </pre>
-                      ) : (
-                        <p className="muted" style={{ margin: 0 }}>
-                          No key insights yet. Submit a response or regenerate key insights.
-                        </p>
-                      )}
-                    </div>
-                  </details>
+                  <KeyInsights
+                    highlight={latestHighlight}
+                    canRegenerate={canRegenerateHighlights}
+                    regenerating={regeneratingHighlights}
+                    disabled={submitting}
+                    onRegenerate={handleRegenerateHighlights}
+                  />
 
                   <ResponseInput onSubmit={handleResponseSubmit} disabled={submitting} />
                 </div>
