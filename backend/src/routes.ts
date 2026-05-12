@@ -44,10 +44,27 @@ function persistQuestionOptions(
   conversationId: number,
   questionNumber: number,
   options: string[]
-): Message[] {
-  return options.map((content) =>
+): void {
+  options.forEach((content) =>
     conversationService.saveMessage(conversationId, 'question', content, questionNumber)
   );
+}
+
+async function generateAndPersistQuestionOptions(
+  conversationId: number,
+  questionNumber: number,
+  history: Message[],
+  highlights?: string
+): Promise<void> {
+  const questions = await openaiService.generateQuestion(
+    history,
+    questionNumber,
+    highlights,
+    questionCount(questionNumber)
+  );
+  conversationService.deleteQuestionMessage(conversationId, questionNumber);
+  persistQuestionOptions(conversationId, questionNumber, questions);
+  conversationService.updateConversationProgress(conversationId, questionNumber);
 }
 
 // Liveness probe
@@ -175,23 +192,9 @@ router.post(
 
       const latestHighlightContent = getLatestHighlightContent(conversation.messages);
 
-      const [nextQuestionContent] = await openaiService.generateQuestion(
-        history,
-        currentQuestionNumber,
-        latestHighlightContent
-      );
+      await generateAndPersistQuestionOptions(id, currentQuestionNumber, history, latestHighlightContent);
 
-      conversationService.deleteQuestionMessage(id, currentQuestionNumber);
-      const questionMessage = conversationService.saveMessage(
-        id,
-        'question',
-        nextQuestionContent,
-        currentQuestionNumber
-      );
-
-      conversationService.updateConversationProgress(id, currentQuestionNumber);
-
-      return res.json({ question: questionMessage });
+      return res.json({});
     } catch (error) {
       logger.error({ err: error }, 'Error regenerating question');
       return res.status(500).json({ error: 'Failed to regenerate question' });
@@ -253,10 +256,7 @@ router.post('/conversations', async (req: Request, res: Response) => {
 
     const conversation = conversationService.createConversation(userId, title.trim());
 
-    const firstQuestions = await openaiService.generateQuestion([], 1, undefined, questionCount(1));
-    persistQuestionOptions(conversation.id, 1, firstQuestions);
-
-    conversationService.updateConversationProgress(conversation.id, 1);
+    await generateAndPersistQuestionOptions(conversation.id, 1, []);
 
     res.status(201).json({ conversation });
   } catch (error) {
@@ -485,16 +485,7 @@ router.post(
       // Generate and persist next question options.
       try {
         const messages = conversationService.getConversationMessages(id);
-        const nextQuestions = await openaiService.generateQuestion(
-          messages,
-          nextQuestionNumber,
-          latestHighlightsContent,
-          questionCount(nextQuestionNumber)
-        );
-
-        persistQuestionOptions(id, nextQuestionNumber, nextQuestions);
-
-        conversationService.updateConversationProgress(id, nextQuestionNumber);
+        await generateAndPersistQuestionOptions(id, nextQuestionNumber, messages, latestHighlightsContent);
 
         return res.json({ savedResponse: responseMessage, isComplete: false });
       } catch (error) {

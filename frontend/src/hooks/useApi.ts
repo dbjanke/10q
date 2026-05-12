@@ -133,8 +133,8 @@ export async function regenerateSummary(conversationId: number): Promise<{ summa
   });
 }
 
-export async function regenerateQuestion(conversationId: number): Promise<{ question: Message }> {
-  return fetchApi<{ question: Message }>(`/conversations/${conversationId}/regenerate-question`, {
+export async function regenerateQuestion(conversationId: number): Promise<void> {
+  await fetchApi<void>(`/conversations/${conversationId}/regenerate-question`, {
     method: 'POST',
   });
 }

@@ -121,6 +121,40 @@ describe('Routes - Regenerate', () => {
         expect(response.body.error).toContain('answered');
     });
 
+    it('should request NUM_QUESTIONS options when regenerating', async () => {
+        const app = createApp(['regenerate_summary_question']);
+
+        vi.mocked(conversationService.getConversationById).mockReturnValue({
+            id: 1,
+            title: 'Test',
+            summary: null,
+            createdAt: new Date(),
+            completed: false,
+            currentQuestionNumber: 2,
+            messages: [],
+        } as any);
+
+        vi.mocked(openaiService.generateQuestion).mockResolvedValue(['A?', 'B?', 'C?']);
+        vi.mocked(conversationService.saveMessage).mockReturnValue({
+            id: 2,
+            conversationId: 1,
+            type: 'question',
+            content: 'A?',
+            questionNumber: 2,
+            createdAt: new Date(),
+        } as any);
+
+        await request(app).post('/api/conversations/1/regenerate-question');
+
+        expect(openaiService.generateQuestion).toHaveBeenCalledWith(
+            expect.any(Array),
+            2,
+            undefined,
+            3
+        );
+        expect(conversationService.saveMessage).toHaveBeenCalledTimes(3);
+    });
+
     it('should regenerate current question when allowed', async () => {
         const app = createApp(['regenerate_summary_question']);
 
@@ -143,12 +177,12 @@ describe('Routes - Regenerate', () => {
             ],
         } as any);
 
-        vi.mocked(openaiService.generateQuestion).mockResolvedValue(['New question']);
+        vi.mocked(openaiService.generateQuestion).mockResolvedValue(['Option A?', 'Option B?', 'Option C?']);
         vi.mocked(conversationService.saveMessage).mockReturnValue({
             id: 2,
             conversationId: 1,
             type: 'question',
-            content: 'New question',
+            content: 'Option A?',
             questionNumber: 2,
             createdAt: new Date(),
         } as any);
@@ -156,8 +190,11 @@ describe('Routes - Regenerate', () => {
         const response = await request(app).post('/api/conversations/1/regenerate-question');
 
         expect(response.status).toBe(200);
-        expect(response.body.question.content).toBe('New question');
         expect(conversationService.deleteQuestionMessage).toHaveBeenCalledWith(1, 2);
+        expect(conversationService.saveMessage).toHaveBeenCalledTimes(3);
+        expect(conversationService.saveMessage).toHaveBeenCalledWith(1, 'question', 'Option A?', 2);
+        expect(conversationService.saveMessage).toHaveBeenCalledWith(1, 'question', 'Option B?', 2);
+        expect(conversationService.saveMessage).toHaveBeenCalledWith(1, 'question', 'Option C?', 2);
     });
 
     it('should regenerate highlights for a conversation with responses', async () => {

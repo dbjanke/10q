@@ -164,20 +164,9 @@ describe('useApi', () => {
         it('should post to regenerate question endpoint', async () => {
             (global.fetch as any)
                 .mockResolvedValueOnce(mockFetchSuccess({ csrfToken: 'test-token' }))
-                .mockResolvedValueOnce(
-                    mockFetchSuccess({
-                        question: {
-                            id: 1,
-                            conversationId: 1,
-                            type: 'question',
-                            content: 'Updated question',
-                            questionNumber: 2,
-                            createdAt: new Date().toISOString(),
-                        },
-                    })
-                );
+                .mockResolvedValueOnce(mockFetchSuccess({}));
 
-            const result = await api.regenerateQuestion(1);
+            await api.regenerateQuestion(1);
 
             expect(global.fetch).toHaveBeenNthCalledWith(1, '/api/auth/csrf', {
                 headers: { 'Content-Type': 'application/json' },
@@ -188,8 +177,6 @@ describe('useApi', () => {
                 headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': 'test-token' },
                 credentials: 'include',
             });
-
-            expect(result.question.content).toBe('Updated question');
         });
     });
 
