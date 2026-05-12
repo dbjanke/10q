@@ -34,7 +34,7 @@ describe('Routes - Response Submission Resilience', () => {
         vi.clearAllMocks();
     });
 
-    it('returns an explicit message when next question generation fails after saving response and highlights', async () => {
+    it('returns an explicit message when next question generation fails after saving response and insights', async () => {
         const app = createApp();
 
         vi.mocked(conversationService.getConversationById).mockReturnValue({
@@ -68,13 +68,13 @@ describe('Routes - Response Submission Resilience', () => {
             .mockReturnValueOnce({
                 id: 12,
                 conversationId: 1,
-                type: 'highlight',
-                content: 'Concise highlights',
+                type: 'insight',
+                content: 'Concise insights',
                 createdAt: new Date(),
             } as any);
 
         vi.mocked(conversationService.getConversationMessages).mockReturnValue([] as any);
-        vi.mocked(openaiService.generateHighlights).mockResolvedValue('Concise highlights');
+        vi.mocked(openaiService.generateInsights).mockResolvedValue('Concise insights');
         vi.mocked(openaiService.generateQuestion).mockRejectedValue(new Error('insufficient_quota'));
 
         const response = await request(app)
@@ -84,11 +84,11 @@ describe('Routes - Response Submission Resilience', () => {
         expect(response.status).toBe(502);
         expect(response.body.error).toContain('saved');
         expect(conversationService.saveMessage).toHaveBeenCalledWith(1, 'response', 'My response', 3);
-        expect(conversationService.saveMessage).toHaveBeenCalledWith(1, 'highlight', 'Concise highlights');
-        expect(conversationService.deleteConversationMessagesByType).toHaveBeenCalledWith(1, 'highlight');
+        expect(conversationService.saveMessage).toHaveBeenCalledWith(1, 'insight', 'Concise insights');
+        expect(conversationService.deleteConversationMessagesByType).toHaveBeenCalledWith(1, 'insight');
     });
 
-    it('returns an explicit message when highlights generation fails after saving response', async () => {
+    it('returns an explicit message when insights generation fails after saving response', async () => {
         const app = createApp();
 
         vi.mocked(conversationService.getConversationById).mockReturnValue({
@@ -121,7 +121,7 @@ describe('Routes - Response Submission Resilience', () => {
             } as any);
 
         vi.mocked(conversationService.getConversationMessages).mockReturnValue([] as any);
-        vi.mocked(openaiService.generateHighlights).mockRejectedValue(new Error('timeout'));
+        vi.mocked(openaiService.generateInsights).mockRejectedValue(new Error('timeout'));
 
         const response = await request(app)
             .post('/api/conversations/1/response')
@@ -129,7 +129,7 @@ describe('Routes - Response Submission Resilience', () => {
 
         expect(response.status).toBe(502);
         expect(response.body.error).toContain('saved');
-        expect(response.body.error).toContain('highlights');
+        expect(response.body.error).toContain('key insights');
         expect(openaiService.generateQuestion).not.toHaveBeenCalled();
     });
 
@@ -180,7 +180,7 @@ describe('Routes - Response Submission Resilience', () => {
         expect(response.body.isComplete).toBe(false);
         expect(response.body.nextQuestions).toBeUndefined();
         expect(vi.mocked(conversationService.saveMessage)).not.toHaveBeenCalled();
-        expect(vi.mocked(openaiService.generateHighlights)).not.toHaveBeenCalled();
+        expect(vi.mocked(openaiService.generateInsights)).not.toHaveBeenCalled();
         expect(vi.mocked(openaiService.generateQuestion)).not.toHaveBeenCalled();
     });
 
@@ -222,7 +222,7 @@ describe('Routes - Response Submission Resilience', () => {
         expect(response.body.savedResponse.content).toBe('Saved response');
         expect(response.body.isComplete).toBe(false);
         expect(vi.mocked(conversationService.saveMessage)).not.toHaveBeenCalled();
-        expect(vi.mocked(openaiService.generateHighlights)).not.toHaveBeenCalled();
+        expect(vi.mocked(openaiService.generateInsights)).not.toHaveBeenCalled();
         expect(vi.mocked(openaiService.generateQuestion)).not.toHaveBeenCalled();
     });
 });

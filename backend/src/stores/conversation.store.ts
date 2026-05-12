@@ -8,7 +8,7 @@ export interface ConversationStore {
     deleteConversation(userId: number, id: number): boolean;
     saveMessage(
         conversationId: number,
-        type: 'question' | 'response' | 'summary' | 'highlight',
+        type: 'question' | 'response' | 'summary' | 'insight' | 'conversation_context',
         content: string,
         questionNumber?: number
     ): Message;
@@ -22,7 +22,7 @@ export interface ConversationStore {
     getConversationMessages(conversationId: number): Message[];
     deleteConversationMessagesByType(
         conversationId: number,
-        type: 'question' | 'response' | 'summary' | 'highlight'
+        type: 'question' | 'response' | 'summary' | 'insight' | 'conversation_context'
     ): void;
     deleteQuestionMessage(conversationId: number, questionNumber: number): void;
     checkHealth(): void;

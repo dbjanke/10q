@@ -7,12 +7,12 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 let commands: Command[] | null = null;
-let highlightsPrompt: string | null = null;
+let insightsPrompt: string | null = null;
 let numOptions: number | null = null;
 
 interface CommandsConfig {
   commands: Command[];
-  highlightsPrompt: string;
+  insightsPrompt: string;
   numOptions: number;
 }
 
@@ -30,7 +30,7 @@ export function loadCommands(): Command[] {
   const parsed = loadCommandConfig();
 
   commands = parsed.commands;
-  highlightsPrompt = parsed.highlightsPrompt;
+  insightsPrompt = parsed.insightsPrompt;
   numOptions = parsed.numOptions;
   return commands!;
 }
@@ -42,25 +42,25 @@ export function getNumOptions(): number {
 
   const parsed = loadCommandConfig();
   commands = parsed.commands;
-  highlightsPrompt = parsed.highlightsPrompt;
+  insightsPrompt = parsed.insightsPrompt;
   numOptions = parsed.numOptions;
   return numOptions;
 }
 
-export function getHighlightsPrompt(): string {
-  if (highlightsPrompt) {
-    return highlightsPrompt;
+export function getInsightsPrompt(): string {
+  if (insightsPrompt) {
+    return insightsPrompt;
   }
 
   const parsed = loadCommandConfig();
   commands = parsed.commands;
-  highlightsPrompt = parsed.highlightsPrompt;
+  insightsPrompt = parsed.insightsPrompt;
 
-  if (!highlightsPrompt) {
-    throw new Error('No highlightsPrompt found in commands config');
+  if (!insightsPrompt) {
+    throw new Error('No insightsPrompt found in commands config');
   }
 
-  return highlightsPrompt;
+  return insightsPrompt;
 }
 
 export function getCommand(questionNumber: number): Command | undefined {

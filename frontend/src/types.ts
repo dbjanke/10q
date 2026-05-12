@@ -10,7 +10,7 @@ export interface Conversation {
 export interface Message {
   id: number;
   conversationId: number;
-  type: 'question' | 'response' | 'summary' | 'highlight';
+  type: 'question' | 'response' | 'summary' | 'insight' | 'conversation_context';
   content: string;
   questionNumber?: number;
   createdAt: string;
@@ -20,7 +20,7 @@ export interface ConversationWithMessages extends Conversation {
   messages: Message[];
 }
 
-export type Permission = 'regenerate_summary_question' | 'regenerate_highlights';
+export type Permission = 'regenerate_summary_question' | 'regenerate_insights';
 
 export interface Group {
   id: number;

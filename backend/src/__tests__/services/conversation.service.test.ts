@@ -213,12 +213,31 @@ describe('conversation.service', () => {
             const conversation = conversationService.createConversation(userId, 'Test');
             const message = conversationService.saveMessage(
                 conversation.id,
-                'highlight',
-                'Latest highlights'
+                'insight',
+                'Latest insights'
             );
 
-            expect(message.type).toBe('highlight');
+            expect(message.type).toBe('insight');
             expect(message.questionNumber).toBeUndefined();
+        });
+
+        it('should save a conversation_context message and retrieve it', () => {
+            const userId = createTestUser(mockDb);
+            const conversation = conversationService.createConversation(userId, 'Test');
+            const content = '## CONTEXT\n\nThis is article context.';
+            const message = conversationService.saveMessage(
+                conversation.id,
+                'conversation_context',
+                content
+            );
+
+            expect(message.type).toBe('conversation_context');
+            expect(message.content).toBe(content);
+            expect(message.questionNumber).toBeUndefined();
+
+            const messages = conversationService.getConversationMessages(conversation.id);
+            expect(messages).toHaveLength(1);
+            expect(messages[0].type).toBe('conversation_context');
         });
     });
 
@@ -289,12 +308,12 @@ describe('conversation.service', () => {
             const conversation = conversationService.createConversation(userId, 'Test');
             conversationService.saveMessage(conversation.id, 'question', 'Q1?', 1);
             conversationService.saveMessage(conversation.id, 'response', 'A1', 1);
-            conversationService.saveMessage(conversation.id, 'highlight', 'Some insight');
+            conversationService.saveMessage(conversation.id, 'insight', 'Some insight');
 
             const messages = conversationService.getConversationMessages(conversation.id);
 
             expect(messages).toHaveLength(3);
-            expect(messages.map(m => m.type)).toEqual(['question', 'response', 'highlight']);
+            expect(messages.map(m => m.type)).toEqual(['question', 'response', 'insight']);
         });
 
         it('should return empty array for conversation with no messages', () => {
@@ -326,14 +345,14 @@ describe('conversation.service', () => {
             const conversation = conversationService.createConversation(userId, 'Test');
             conversationService.saveMessage(conversation.id, 'question', 'Q1?', 1);
             conversationService.saveMessage(conversation.id, 'response', 'A1', 1);
-            conversationService.saveMessage(conversation.id, 'highlight', 'Insight 1');
-            conversationService.saveMessage(conversation.id, 'highlight', 'Insight 2');
+            conversationService.saveMessage(conversation.id, 'insight', 'Insight 1');
+            conversationService.saveMessage(conversation.id, 'insight', 'Insight 2');
 
-            conversationService.deleteConversationMessagesByType(conversation.id, 'highlight');
+            conversationService.deleteConversationMessagesByType(conversation.id, 'insight');
 
             const messages = conversationService.getConversationMessages(conversation.id);
             expect(messages).toHaveLength(2);
-            expect(messages.every(m => m.type !== 'highlight')).toBe(true);
+            expect(messages.every(m => m.type !== 'insight')).toBe(true);
         });
 
         it('should leave conversation intact when deleting a type with no messages', () => {
@@ -347,18 +366,18 @@ describe('conversation.service', () => {
             expect(messages).toHaveLength(1);
         });
 
-        it('should replace old highlights when saving new ones', () => {
+        it('should replace old insights when saving new ones', () => {
             const userId = createTestUser(mockDb);
             const conversation = conversationService.createConversation(userId, 'Test');
-            conversationService.saveMessage(conversation.id, 'highlight', 'Old insight');
+            conversationService.saveMessage(conversation.id, 'insight', 'Old insight');
 
-            conversationService.deleteConversationMessagesByType(conversation.id, 'highlight');
-            conversationService.saveMessage(conversation.id, 'highlight', 'New insight');
+            conversationService.deleteConversationMessagesByType(conversation.id, 'insight');
+            conversationService.saveMessage(conversation.id, 'insight', 'New insight');
 
             const messages = conversationService.getConversationMessages(conversation.id);
-            const highlights = messages.filter(m => m.type === 'highlight');
-            expect(highlights).toHaveLength(1);
-            expect(highlights[0].content).toBe('New insight');
+            const insights = messages.filter(m => m.type === 'insight');
+            expect(insights).toHaveLength(1);
+            expect(insights[0].content).toBe('New insight');
         });
     });
 

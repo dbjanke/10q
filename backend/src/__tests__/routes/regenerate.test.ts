@@ -60,8 +60,8 @@ describe('Routes - Regenerate', () => {
                 {
                     id: 2,
                     conversationId: 1,
-                    type: 'highlight',
-                    content: 'Latest highlights',
+                    type: 'insight',
+                    content: 'Latest insights',
                     createdAt: new Date(),
                 },
             ],
@@ -71,8 +71,8 @@ describe('Routes - Regenerate', () => {
             {
                 id: 2,
                 conversationId: 1,
-                type: 'highlight',
-                content: 'Latest highlights',
+                type: 'insight',
+                content: 'Latest insights',
                 createdAt: new Date(),
             },
         ] as any);
@@ -197,8 +197,8 @@ describe('Routes - Regenerate', () => {
         expect(conversationService.saveMessage).toHaveBeenCalledWith(1, 'question', 'Option C?', 2);
     });
 
-    it('should regenerate highlights for a conversation with responses', async () => {
-        const app = createApp(['regenerate_highlights']);
+    it('should regenerate insights for a conversation with responses', async () => {
+        const app = createApp(['regenerate_insights']);
 
         vi.mocked(conversationService.getConversationById).mockReturnValue({
             id: 1,
@@ -220,31 +220,31 @@ describe('Routes - Regenerate', () => {
                 createdAt: new Date(),
             },
         ] as any);
-        vi.mocked(openaiService.generateHighlights).mockResolvedValue('Refined highlights');
+        vi.mocked(openaiService.generateInsights).mockResolvedValue('Refined insights');
         vi.mocked(conversationService.saveMessage).mockReturnValue({
             id: 2,
             conversationId: 1,
-            type: 'highlight',
-            content: 'Refined highlights',
+            type: 'insight',
+            content: 'Refined insights',
             createdAt: new Date(),
         } as any);
 
-        const response = await request(app).post('/api/conversations/1/regenerate-highlights');
+        const response = await request(app).post('/api/conversations/1/regenerate-insights');
 
         expect(response.status).toBe(200);
-        expect(response.body.highlights.content).toBe('Refined highlights');
-        expect(conversationService.deleteConversationMessagesByType).toHaveBeenCalledWith(1, 'highlight');
+        expect(response.body.insights.content).toBe('Refined insights');
+        expect(conversationService.deleteConversationMessagesByType).toHaveBeenCalledWith(1, 'insight');
     });
 
-    it('should reject regenerate highlights without permission', async () => {
+    it('should reject regenerate insights without permission', async () => {
         const app = createApp([]);
-        const response = await request(app).post('/api/conversations/1/regenerate-highlights');
+        const response = await request(app).post('/api/conversations/1/regenerate-insights');
 
         expect(response.status).toBe(403);
     });
 
-    it('should reject regenerate highlights when there are no responses', async () => {
-        const app = createApp(['regenerate_highlights']);
+    it('should reject regenerate insights when there are no responses', async () => {
+        const app = createApp(['regenerate_insights']);
 
         vi.mocked(conversationService.getConversationById).mockReturnValue({
             id: 1,
@@ -267,7 +267,7 @@ describe('Routes - Regenerate', () => {
             },
         ] as any);
 
-        const response = await request(app).post('/api/conversations/1/regenerate-highlights');
+        const response = await request(app).post('/api/conversations/1/regenerate-insights');
 
         expect(response.status).toBe(400);
         expect(response.body.error).toContain('No responses');

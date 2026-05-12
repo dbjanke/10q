@@ -10,6 +10,7 @@ import { loadEnv, validateEnv, getCookieSecure, getFrontendUrl, getNodeEnv, getS
 import routes from './routes.js';
 import authRoutes from './routes/auth.js';
 import adminRoutes from './routes/admin.js';
+import articleRoutes from './routes/articles.js';
 import { configurePassport } from './auth/passport.js';
 import { csrfProtection } from './middleware/csrf.js';
 import { errorHandler } from './middleware/errorHandler.js';
@@ -126,6 +127,7 @@ if (NODE_ENV === 'development') {
 // API routes
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/articles', articleRoutes);
 app.use('/api', routes);
 
 app.get('/metrics', metricsEndpoint);

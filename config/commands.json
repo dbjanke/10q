@@ -1,5 +1,5 @@
 {
-  "highlightsPrompt": "Generate a concise list of highlights from the discussion.\n\n- Use a single bullet list (no sections)\n- 3–10 bullets depending on signal strength\n- Each bullet = one distinct, non-obvious insight\n- Avoid repetition or paraphrasing\n- Keep phrasing tight and concrete",
+  "insightsPrompt": "Generate a concise list of highlights from the discussion.\n\n- Use a single bullet list (no sections)\n- 3–10 bullets depending on signal strength\n- Each bullet = one distinct, non-obvious insight\n- Avoid repetition or paraphrasing\n- Keep phrasing tight and concrete",
   "numOptions": 3,
   "commands": [
     {

@@ -12,11 +12,17 @@ The intended experience is not a conversation so much as a reckoning. The questi
 
 ### Starting a Session
 
-The user provides a topic — something they are actively wrestling with, not a research question or an abstract subject. The system opens with a fixed question:
+The user provides a topic — something they are actively wrestling with, not a research question or an abstract subject — and may optionally upload a PDF article to provide context for the session.
+
+When no article is uploaded, the system opens with a fixed question:
 
 > *What's something you're wrestling with, and what feels true about it that you can't fully explain yet?*
 
 This framing establishes the tone: the user should bring something live, not rehearsed.
+
+When an article is uploaded, it is processed before the conversation is created. The system extracts key insights and a summary from the article. The summary is stored with the conversation and shown as a labeled context block throughout the session. The key insights are pre-seeded as the initial Key Insights set, visible starting at Q1 without the user having answered any questions. The session still opens with the fixed question above; the article context informs subsequent questions rather than replacing the opening.
+
+If the article is too long to analyze in full, only the first portion is used and the user is shown a notice at upload time. The session proceeds normally with the partial analysis.
 
 ### The Ten Questions
 
@@ -53,11 +59,11 @@ The user can export the full session — questions, responses, summary, and key 
 
 ### Dashboard
 
-Users see a list of all their past conversations with title, date, and completion status. They can open any past conversation to review it, start a new one, or delete an existing one.
+Users see a list of all their past conversations with title, date, and completion status. They can open any past conversation to review it, start a new one, or delete an existing one. When starting a new conversation, users can optionally upload a PDF article. The article is processed as soon as the file is selected — before the user clicks Start. If processing succeeds, the UI shows a confirmation and the article is attached to the conversation on creation. If the article was too long to analyze in full, a truncation notice is shown alongside the confirmation. If processing fails (for example, a scanned PDF with no extractable text), an error is shown and the article is not attached.
 
 ### Conversation View
 
-The active session displays the questions and responses in sequence. For the current step, the system presents multiple question options; the user selects one and then responds. The user cannot advance without both selecting a question and submitting a response. Completed conversations are read-only.
+The active session displays the questions and responses in sequence. When the conversation was started with an article, the article summary is shown as a labeled context block above the question sequence. For the current step, the system presents multiple question options; the user selects one and then responds. The user cannot advance without both selecting a question and submitting a response. Completed conversations are read-only.
 
 ### Export
 
@@ -69,9 +75,17 @@ A completed conversation can be exported as a Markdown file containing the full 
 
 **Conversation** — A single session. Has a user-provided title (editable), a current question index (1–10), a completion flag, and belongs to a user.
 
-**Message** — An individual unit of content within a conversation. Types include: question (AI-generated), response (user-authored), summary (AI-generated at completion), and key insight (AI-generated after each response; only the latest set is retained). Multiple question messages can share the same step index while options are pending selection; once the user submits a response, all options for that step are discarded and only the selected question is retained.
+**Message** — An individual unit of content within a conversation. Types include: question (AI-generated), response (user-authored), summary (AI-generated at completion), key insight (generated after each user response, or pre-seeded from an article at conversation creation; only the latest set is retained), and conversation context (the article summary, stored when a conversation is started with a PDF article). Multiple question messages can share the same step index while options are pending selection; once the user submits a response, all options for that step are discarded and only the selected question is retained.
 
 **User** — An authenticated account. Has an email address and a role (user or admin).
+
+---
+
+## Error Handling
+
+**Article too long to analyze in full** — If an uploaded article exceeds the length the system can process, only the first portion is analyzed. The session is created normally using the partial analysis. The user is notified at upload time that the article was truncated; this notice is not repeated during the session.
+
+**Article contains no extractable text** — If the system cannot extract text from an uploaded PDF (for example, a scanned document stored as images), the upload is rejected before the conversation is created. The user receives an error and must either upload a different file or proceed without article context.
 
 ---
 

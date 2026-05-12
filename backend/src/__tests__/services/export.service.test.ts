@@ -174,11 +174,11 @@ describe('export.service', () => {
             expect(result).toContain('## Summary');
         });
 
-        it('should ignore highlight and summary message types (not output them as questions)', () => {
+        it('should ignore insight and summary message types (not output them as questions)', () => {
             const conversation = makeConversation({
                 messages: [
                     {
-                        id: 1, conversationId: 1, type: 'highlight',
+                        id: 1, conversationId: 1, type: 'insight',
                         content: 'Key insight', createdAt: new Date(),
                     },
                     {

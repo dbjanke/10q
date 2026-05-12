@@ -41,7 +41,7 @@ export default function ConversationView({ currentUser, onLogout }: Conversation
   const [submitting, setSubmitting] = useState(false);
   const [regeneratingSummary, setRegeneratingSummary] = useState(false);
   const [regeneratingQuestion, setRegeneratingQuestion] = useState(false);
-  const [regeneratingHighlights, setRegeneratingHighlights] = useState(false);
+  const [regeneratingInsights, setRegeneratingInsights] = useState(false);
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState('');
   const [savingTitle, setSavingTitle] = useState(false);
@@ -197,20 +197,20 @@ export default function ConversationView({ currentUser, onLogout }: Conversation
     }
   }
 
-  async function handleRegenerateHighlights() {
+  async function handleRegenerateInsights() {
     if (!conversation) return;
 
     try {
-      setRegeneratingHighlights(true);
+      setRegeneratingInsights(true);
       setError(null);
 
-      await api.regenerateHighlights(conversation.id);
+      await api.regenerateInsights(conversation.id);
       await loadConversation(conversation.id);
     } catch (err) {
       setError('Failed to regenerate key insights');
       console.error(err);
     } finally {
-      setRegeneratingHighlights(false);
+      setRegeneratingInsights(false);
     }
   }
 
@@ -245,9 +245,11 @@ export default function ConversationView({ currentUser, onLogout }: Conversation
   const questions = conversation.messages.filter((m) => m.type === 'question');
   const responses = conversation.messages.filter((m) => m.type === 'response');
   const summaryMessage = conversation.messages.find((m) => m.type === 'summary');
-  const latestHighlight = [...conversation.messages]
+  const latestInsight = [...conversation.messages]
     .reverse()
-    .find((m) => m.type === 'highlight');
+    .find((m) => m.type === 'insight');
+  const contextMessage = conversation.messages.find((m) => m.type === 'conversation_context');
+  const contextSummary = contextMessage?.content.replace(/^## CONTEXT\n\n/, '');
 
   for (const question of questions) {
     const response = responses.find((r) => r.questionNumber === question.questionNumber);
@@ -256,7 +258,7 @@ export default function ConversationView({ currentUser, onLogout }: Conversation
 
   const isComplete = conversation.completed;
   const canRegenerate = currentUser.permissions?.includes('regenerate_summary_question') || false;
-  const canRegenerateHighlights = currentUser.permissions?.includes('regenerate_highlights') || false;
+  const canRegenerateInsights = currentUser.permissions?.includes('regenerate_insights') || false;
 
   return (
     <div className="page">
@@ -348,10 +350,10 @@ export default function ConversationView({ currentUser, onLogout }: Conversation
             {/* Key Insights */}
             <div style={{ marginTop: 20 }}>
               <KeyInsights
-                highlight={latestHighlight}
-                canRegenerate={canRegenerateHighlights}
-                regenerating={regeneratingHighlights}
-                onRegenerate={handleRegenerateHighlights}
+                insight={latestInsight}
+                canRegenerate={canRegenerateInsights}
+                regenerating={regeneratingInsights}
+                onRegenerate={handleRegenerateInsights}
               />
             </div>
 
@@ -373,6 +375,14 @@ export default function ConversationView({ currentUser, onLogout }: Conversation
                 </svg>
               </summary>
               <div className="stack" style={{ padding: '0 18px 18px' }}>
+                {contextSummary && (
+                  <div className="card" style={{ marginBottom: 8, padding: 20 }}>
+                    <p className="muted" style={{ fontSize: 12, fontWeight: 700, marginBottom: 8, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+                      Article Context
+                    </p>
+                    <p style={{ whiteSpace: 'pre-wrap' }}>{contextSummary}</p>
+                  </div>
+                )}
                 {questionPairs.map((pair) => (
                   <div key={pair.question.id}>
                     <QuestionCard
@@ -387,6 +397,16 @@ export default function ConversationView({ currentUser, onLogout }: Conversation
           </>
         ) : (
           <>
+            {/* Article context */}
+            {contextSummary && (
+              <div className="card" style={{ marginBottom: 24, padding: 20 }}>
+                <p className="muted" style={{ fontSize: 12, fontWeight: 700, marginBottom: 8, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+                  Article Context
+                </p>
+                <p style={{ whiteSpace: 'pre-wrap' }}>{contextSummary}</p>
+              </div>
+            )}
+
             {/* In-progress conversation */}
             <div className="stack" style={{ marginBottom: 24 }}>
               {questionPairs.filter((pair) => pair.response).map((pair) => (
@@ -427,11 +447,11 @@ export default function ConversationView({ currentUser, onLogout }: Conversation
                   )}
 
                   <KeyInsights
-                    highlight={latestHighlight}
-                    canRegenerate={canRegenerateHighlights}
-                    regenerating={regeneratingHighlights}
+                    insight={latestInsight}
+                    canRegenerate={canRegenerateInsights}
+                    regenerating={regeneratingInsights}
                     disabled={submitting}
-                    onRegenerate={handleRegenerateHighlights}
+                    onRegenerate={handleRegenerateInsights}
                   />
 
                   <ResponseInput onSubmit={handleResponseSubmit} disabled={submitting} />

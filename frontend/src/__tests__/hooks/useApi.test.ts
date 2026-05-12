@@ -41,12 +41,56 @@ describe('useApi', () => {
             expect(result.firstQuestion.type).toBe('question');
         });
 
+        it('should include context fields in the request body when provided', async () => {
+            (global.fetch as any)
+                .mockResolvedValueOnce(mockFetchSuccess({ csrfToken: 'test-token' }))
+                .mockResolvedValueOnce(mockFetchSuccess(mockCreateConversationResponse));
+
+            await api.createConversation('Article Topic', {
+                contextSummary: 'A two-paragraph summary.',
+                contextKeyInsights: '• Insight one\n• Insight two',
+            });
+
+            const body = JSON.parse((global.fetch as any).mock.calls[1][1].body);
+            expect(body.title).toBe('Article Topic');
+            expect(body.contextSummary).toBe('A two-paragraph summary.');
+            expect(body.contextKeyInsights).toBe('• Insight one\n• Insight two');
+        });
+
         it('should handle errors when creating conversation', async () => {
             (global.fetch as any)
                 .mockResolvedValueOnce(mockFetchSuccess({ csrfToken: 'test-token' }))
                 .mockResolvedValueOnce(mockFetchError('Title is required', 400));
 
             await expect(api.createConversation('')).rejects.toThrow('Title is required');
+        });
+    });
+
+    describe('uploadArticle', () => {
+        it('should POST the file as FormData with the CSRF token header', async () => {
+            (global.fetch as any)
+                .mockResolvedValueOnce(mockFetchSuccess({ csrfToken: 'test-token' }))
+                .mockResolvedValueOnce(mockFetchSuccess({ keyInsights: '• Insight', summary: 'Summary text' }));
+
+            const file = new File(['%PDF-1.4'], 'test.pdf', { type: 'application/pdf' });
+            const result = await api.uploadArticle(file);
+
+            const [url, options] = (global.fetch as any).mock.calls[1];
+            expect(url).toBe('/api/articles');
+            expect(options.method).toBe('POST');
+            expect(options.headers['X-CSRF-Token']).toBe('test-token');
+            expect(options.headers['Content-Type']).toBeUndefined();
+            expect(options.body).toBeInstanceOf(FormData);
+            expect(result).toEqual({ keyInsights: '• Insight', summary: 'Summary text' });
+        });
+
+        it('should throw when the upload fails', async () => {
+            (global.fetch as any)
+                .mockResolvedValueOnce(mockFetchSuccess({ csrfToken: 'test-token' }))
+                .mockResolvedValueOnce(mockFetchError('PDF exceeds size limit', 413));
+
+            const file = new File(['data'], 'big.pdf', { type: 'application/pdf' });
+            await expect(api.uploadArticle(file)).rejects.toThrow('PDF exceeds size limit');
         });
     });
 
@@ -180,35 +224,35 @@ describe('useApi', () => {
         });
     });
 
-    describe('regenerateHighlights', () => {
-        it('should post to regenerate highlights endpoint', async () => {
+    describe('regenerateInsights', () => {
+        it('should post to regenerate insights endpoint', async () => {
             (global.fetch as any)
                 .mockResolvedValueOnce(mockFetchSuccess({ csrfToken: 'test-token' }))
                 .mockResolvedValueOnce(
                     mockFetchSuccess({
-                        highlights: {
+                        insights: {
                             id: 9,
                             conversationId: 1,
-                            type: 'highlight',
-                            content: 'Latest highlights',
+                            type: 'insight',
+                            content: 'Latest insights',
                             createdAt: new Date().toISOString(),
                         },
                     })
                 );
 
-            const result = await api.regenerateHighlights(1);
+            const result = await api.regenerateInsights(1);
 
             expect(global.fetch).toHaveBeenNthCalledWith(1, '/api/auth/csrf', {
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
             });
-            expect(global.fetch).toHaveBeenNthCalledWith(2, '/api/conversations/1/regenerate-highlights', {
+            expect(global.fetch).toHaveBeenNthCalledWith(2, '/api/conversations/1/regenerate-insights', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': 'test-token' },
                 credentials: 'include',
             });
 
-            expect(result.highlights.type).toBe('highlight');
+            expect(result.insights.type).toBe('insight');
         });
     });
 

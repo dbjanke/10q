@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import ResponseInput from '../../components/ResponseInput';
 import { MAX_RESPONSE_LENGTH } from '../../config/validation';
@@ -88,13 +88,11 @@ describe('ResponseInput', () => {
         expect(screen.getByText(`5 / ${MAX_RESPONSE_LENGTH} characters`)).toBeInTheDocument();
     });
 
-    it('shows character count in warning style when near the limit', async () => {
-        const user = userEvent.setup();
+    it('shows character count in warning style when near the limit', () => {
         render(<ResponseInput onSubmit={vi.fn()} />);
         const textarea = screen.getByPlaceholderText('Take your time to reflect and respond...');
-        // Type enough to be within 50 chars of the limit
         const nearLimitText = 'a'.repeat(MAX_RESPONSE_LENGTH - 10);
-        await user.type(textarea, nearLimitText);
+        fireEvent.change(textarea, { target: { value: nearLimitText } });
         const counter = screen.getByText(`${nearLimitText.length} / ${MAX_RESPONSE_LENGTH} characters`);
         expect(counter).toHaveStyle({ color: '#c2410c' });
     });

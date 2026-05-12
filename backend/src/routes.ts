@@ -11,7 +11,7 @@ import { rateLimit } from './middleware/rateLimit.js';
 import { concurrencyLimit } from './middleware/concurrencyLimit.js';
 import { requireAuth } from './middleware/auth.js';
 import { requirePermission } from './middleware/permissions.js';
-import { REGENERATE_PERMISSION, REGENERATE_HIGHLIGHTS_PERMISSION } from './config/permissions.js';
+import { REGENERATE_PERMISSION, REGENERATE_INSIGHTS_PERMISSION } from './config/permissions.js';
 import { parseIdParam } from './utils/params.js';
 import { logger } from './utils/logger.js';
 import {
@@ -31,10 +31,10 @@ const responseConcurrencyLimit = concurrencyLimit({
   max: getMaxConcurrentSubmissions(),
 });
 
-function getLatestHighlightContent(messages: Message[]): string | undefined {
-  const highlights = messages.filter((message) => message.type === 'highlight');
-  const latestHighlight = highlights[highlights.length - 1];
-  return latestHighlight?.content;
+function getLatestInsightContent(messages: Message[]): string | undefined {
+  const insights = messages.filter((message) => message.type === 'insight');
+  const latestInsight = insights[insights.length - 1];
+  return latestInsight?.content;
 }
 
 function validateTitle(title: unknown): { error: string } | { value: string } {
@@ -114,7 +114,7 @@ router.post(
       }
 
       const messages = conversationService.getConversationMessages(id);
-      const latestHighlightContent = getLatestHighlightContent(messages);
+      const latestHighlightContent = getLatestInsightContent(messages);
       const summary = await openaiService.generateSummary(messages, latestHighlightContent);
 
       conversationService.deleteConversationMessagesByType(id, 'summary');
@@ -170,7 +170,7 @@ router.post(
         return message.type !== 'question' && message.type !== 'response';
       });
 
-      const latestHighlightContent = getLatestHighlightContent(conversation.messages);
+      const latestHighlightContent = getLatestInsightContent(conversation.messages);
 
       await questionService.generateAndPersistQuestionOptions(id, currentQuestionNumber, history, latestHighlightContent);
 
@@ -183,8 +183,8 @@ router.post(
 );
 
 router.post(
-  '/conversations/:id/regenerate-highlights',
-  requirePermission(REGENERATE_HIGHLIGHTS_PERMISSION),
+  '/conversations/:id/regenerate-insights',
+  requirePermission(REGENERATE_INSIGHTS_PERMISSION),
   async (req: Request, res: Response) => {
     try {
       const userId = req.user!.id;
@@ -202,17 +202,17 @@ router.post(
       const messages = conversationService.getConversationMessages(id);
       const hasResponse = messages.some((message) => message.type === 'response');
       if (!hasResponse) {
-        return res.status(400).json({ error: 'No responses available to generate highlights' });
+        return res.status(400).json({ error: 'No responses available to generate insights' });
       }
 
-      const highlights = await openaiService.generateHighlights(messages);
-      conversationService.deleteConversationMessagesByType(id, 'highlight');
-      const highlightMessage = conversationService.saveMessage(id, 'highlight', highlights);
+      const insights = await openaiService.generateInsights(messages);
+      conversationService.deleteConversationMessagesByType(id, 'insight');
+      const insightMessage = conversationService.saveMessage(id, 'insight', insights);
 
-      return res.json({ highlights: highlightMessage });
+      return res.json({ insights: insightMessage });
     } catch (error) {
-      logger.error({ err: error }, 'Error regenerating highlights');
-      return res.status(502).json({ error: 'Failed to regenerate highlights' });
+      logger.error({ err: error }, 'Error regenerating insights');
+      return res.status(502).json({ error: 'Failed to regenerate insights' });
     }
   }
 );
@@ -221,7 +221,7 @@ router.post(
 router.post('/conversations', async (req: Request, res: Response) => {
   try {
     const userId = req.user!.id;
-    const { title } = req.body as CreateConversationRequest;
+    const { title, contextSummary, contextKeyInsights } = req.body as CreateConversationRequest;
 
     const titleResult = validateTitle(title);
     if ('error' in titleResult) {
@@ -230,7 +230,30 @@ router.post('/conversations', async (req: Request, res: Response) => {
 
     const conversation = conversationService.createConversation(userId, titleResult.value);
 
-    await questionService.generateAndPersistQuestionOptions(conversation.id, 1, []);
+    const hasContext = Boolean(contextSummary);
+
+    if (hasContext) {
+      conversationService.saveMessage(
+        conversation.id,
+        'conversation_context',
+        `## CONTEXT\n\n${contextSummary}`
+      );
+    }
+
+    const history = hasContext
+      ? conversationService.getConversationMessages(conversation.id)
+      : [];
+
+    await questionService.generateAndPersistQuestionOptions(
+      conversation.id,
+      1,
+      history,
+      contextKeyInsights
+    );
+
+    if (hasContext && contextKeyInsights) {
+      conversationService.saveMessage(conversation.id, 'insight', contextKeyInsights);
+    }
 
     res.status(201).json({ conversation });
   } catch (error) {
@@ -409,18 +432,18 @@ router.post(
         );
       }
 
-      let latestHighlightsContent: string;
+      let latestInsightsContent: string;
       try {
         const messages = conversationService.getConversationMessages(id);
-        const highlights = await openaiService.generateHighlights(messages);
-        conversationService.deleteConversationMessagesByType(id, 'highlight');
-        const highlightMessage = conversationService.saveMessage(id, 'highlight', highlights);
-        latestHighlightsContent = highlightMessage.content;
+        const insights = await openaiService.generateInsights(messages);
+        conversationService.deleteConversationMessagesByType(id, 'insight');
+        const insightMessage = conversationService.saveMessage(id, 'insight', insights);
+        latestInsightsContent = insightMessage.content;
       } catch (error) {
-        logger.error({ err: error, conversationId: id }, 'Highlights generation failed after saving response');
+        logger.error({ err: error, conversationId: id }, 'Insights generation failed after saving response');
         return res.status(502).json({
           error:
-            'Your response was saved, but we could not generate highlights. Please retry or use regenerate highlights.',
+            'Your response was saved, but we could not generate key insights. Please retry or use regenerate insights.',
         });
       }
 
@@ -428,7 +451,7 @@ router.post(
       if (currentQuestionNumber >= totalQuestions) {
         try {
           const messages = conversationService.getConversationMessages(id);
-          const summary = await openaiService.generateSummary(messages, latestHighlightsContent);
+          const summary = await openaiService.generateSummary(messages, latestInsightsContent);
 
           conversationService.saveMessage(id, 'summary', summary);
           conversationService.updateConversationSummary(id, summary);
@@ -450,7 +473,7 @@ router.post(
       // Generate and persist next question options.
       try {
         const messages = conversationService.getConversationMessages(id);
-        await questionService.generateAndPersistQuestionOptions(id, nextQuestionNumber, messages, latestHighlightsContent);
+        await questionService.generateAndPersistQuestionOptions(id, nextQuestionNumber, messages, latestInsightsContent);
 
         return res.json({ savedResponse: responseMessage, isComplete: false });
       } catch (error) {

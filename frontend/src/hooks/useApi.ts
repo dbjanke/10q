@@ -99,10 +99,33 @@ export async function logout(): Promise<void> {
   await fetchApi('/auth/logout', { method: 'POST' });
 }
 
-export async function createConversation(title: string): Promise<CreateConversationResponse> {
+export async function uploadArticle(file: File): Promise<{ keyInsights: string; summary: string; truncated: boolean }> {
+  const token = await fetchCsrfToken();
+  const formData = new FormData();
+  formData.append('pdf', file);
+
+  const response = await fetch(`${API_BASE}/articles`, {
+    method: 'POST',
+    headers: { 'X-CSRF-Token': token },
+    credentials: 'include',
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: 'Upload failed' }));
+    throw new Error(error.error || `HTTP ${response.status}`);
+  }
+
+  return response.json();
+}
+
+export async function createConversation(
+  title: string,
+  context?: { contextSummary: string; contextKeyInsights: string }
+): Promise<CreateConversationResponse> {
   return fetchApi<CreateConversationResponse>('/conversations', {
     method: 'POST',
-    body: JSON.stringify({ title }),
+    body: JSON.stringify({ title, ...context }),
   });
 }
 
@@ -139,8 +162,8 @@ export async function regenerateQuestion(conversationId: number): Promise<void> 
   });
 }
 
-export async function regenerateHighlights(conversationId: number): Promise<{ highlights: Message }> {
-  return fetchApi<{ highlights: Message }>(`/conversations/${conversationId}/regenerate-highlights`, {
+export async function regenerateInsights(conversationId: number): Promise<{ insights: Message }> {
+  return fetchApi<{ insights: Message }>(`/conversations/${conversationId}/regenerate-insights`, {
     method: 'POST',
   });
 }

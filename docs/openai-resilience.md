@@ -38,6 +38,7 @@ The SDK **does not retry** these conditions:
 - `OPENAI_CIRCUIT_ERROR_THRESHOLD=50` - Error % to open circuit (50% default)
 - `OPENAI_CIRCUIT_VOLUME_THRESHOLD=10` - Min requests before circuit can open (10 default)
 
+
 **States:**
 - **Closed** (normal): All requests pass through
 - **Open**: All requests fail fast without calling OpenAI

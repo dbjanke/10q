@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
     generateQuestion,
     generateSummary,
-    generateHighlights,
+    generateInsights,
     checkOpenAiHealth,
     getCircuitBreakerState,
 } from '../../services/openai.service.js';
@@ -111,9 +111,9 @@ describe('openai.service', () => {
         vi.mocked(systemPromptModule.loadSystemPrompts).mockReturnValue({
             questionPrompt: 'You are a thoughtful guide.',
             summaryPrompt: 'Create a summary.',
-            highlightsPrompt: 'Extract compact highlights.',
+            insightsPrompt: 'Extract compact highlights.',
         });
-        vi.mocked(commandsModule.getHighlightsPrompt).mockReturnValue('Use these highlight sections');
+        vi.mocked(commandsModule.getInsightsPrompt).mockReturnValue('Use these highlight sections');
     });
 
     afterEach(() => {
@@ -195,8 +195,8 @@ describe('openai.service', () => {
                 await generateQuestion([], 2, 'Key insight: user values stability');
 
                 const callArgs = mockCreate.mock.calls[0][0];
-                const systemMessages = callArgs.messages.filter((m: any) => m.role === 'system');
-                const highlightMessage = systemMessages.find((m: any) =>
+                const assistantMessages = callArgs.messages.filter((m: any) => m.role === 'assistant');
+                const highlightMessage = assistantMessages.find((m: any) =>
                     (m.content as string).includes('Key insight: user values stability')
                 );
                 expect(highlightMessage).toBeDefined();
@@ -418,7 +418,7 @@ describe('openai.service', () => {
         });
     });
 
-    describe('generateHighlights', () => {
+    describe('generateInsights', () => {
         it('should generate compact highlights from conversation messages', async () => {
             const messages: Message[] = [
                 {
@@ -439,10 +439,10 @@ describe('openai.service', () => {
                 },
             ];
 
-            const highlights = await generateHighlights(messages);
+            const highlights = await generateInsights(messages);
 
             expect(highlights).toBe('Generated question from OpenAI?');
-            expect(commandsModule.getHighlightsPrompt).toHaveBeenCalled();
+            expect(commandsModule.getInsightsPrompt).toHaveBeenCalled();
             expect(systemPromptModule.loadSystemPrompts).toHaveBeenCalled();
         });
     });

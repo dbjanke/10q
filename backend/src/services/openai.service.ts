@@ -1,7 +1,7 @@
 import OpenAI from 'openai';
 import CircuitBreaker from 'opossum';
 import { Message } from '../types.js';
-import { getCommand, getHighlightsPrompt } from '../config/commands.js';
+import { getCommand, getInsightsPrompt } from '../config/commands.js';
 import { loadSystemPrompts } from '../config/system-prompt.js';
 import { logger } from '../utils/logger.js';
 import { updateCircuitBreakerMetric } from '../metrics.js';
@@ -18,7 +18,7 @@ const CIRCUIT_BREAKER_VOLUME_THRESHOLD = Number(process.env.OPENAI_CIRCUIT_VOLUM
 const RESPONSE_TEMPERATURE = 0.7;
 const QUESTION_MAX_TOKENS = 150;
 const SUMMARY_MAX_TOKENS = 500;
-const HIGHLIGHTS_MAX_TOKENS = 220;
+const KEY_INSIGHTS_MAX_TOKENS = 300;
 
 function buildDiscussionText(conversationHistory: Message[]): string {
   let conversationText = '';
@@ -177,6 +177,26 @@ function getModel(): string {
   return process.env.OPENAI_MODEL || 'gpt-4o';
 }
 
+async function callOpenAI(
+  messages: OpenAI.Chat.ChatCompletionMessageParam[],
+  maxTokens: number
+): Promise<string> {
+  const breaker = getCircuitBreaker();
+  const openai = getOpenAIClient();
+
+  const completion = await breaker.fire(async () =>
+    openai.chat.completions.create(
+      { model: getModel(), messages, temperature: RESPONSE_TEMPERATURE, max_tokens: maxTokens },
+    )
+  ) as OpenAI.Chat.ChatCompletion;
+
+  const content = completion.choices[0]?.message?.content?.trim();
+  if (!content) {
+    throw new Error('Empty response from OpenAI');
+  }
+  return content;
+}
+
 export async function checkOpenAiHealth(): Promise<{
   ok: boolean;
   latencyMs: number;
@@ -227,7 +247,7 @@ export async function checkOpenAiHealth(): Promise<{
 async function generateSingleQuestion(
   conversationHistory: Message[],
   questionNumber: number,
-  highlights?: string
+  insights?: string
 ): Promise<string> {
   const command = getCommand(questionNumber);
   if (!command) {
@@ -243,7 +263,7 @@ async function generateSingleQuestion(
       content: systemPrompts.questionPrompt,
     },
     {
-      role: 'system',
+      role: 'assistant',
       content: `Current command (Question ${questionNumber}/10): ${command.name}\n${command.prompt}`,
     },
   ];
@@ -260,13 +280,18 @@ async function generateSingleQuestion(
         role: 'user',
         content: msg.content,
       });
+    } else if (msg.type === 'conversation_context') {
+      messages.push({
+        role: 'assistant',
+        content: msg.content,
+      });
     }
   }
 
-  if (highlights) {
+  if (insights) {
     messages.push({
-      role: 'system',
-      content: `# Key Insights:\n${highlights}`,
+      role: 'assistant',
+      content: `# Key Insights:\n${insights}`,
     });
   }
 
@@ -276,31 +301,14 @@ async function generateSingleQuestion(
     content: `Generate question ${questionNumber} of 10 following the command guidance above.`,
   });
 
-  const breaker = getCircuitBreaker();
-  const openai = getOpenAIClient();
-
-  const completion = await breaker.fire(async () => {
-    logger.debug({ questionNumber }, 'Generating question via OpenAI');
-    return openai.chat.completions.create({
-      model: getModel(),
-      messages,
-      temperature: RESPONSE_TEMPERATURE,
-      max_tokens: QUESTION_MAX_TOKENS,
-    });
-  }) as OpenAI.Chat.ChatCompletion;
-
-  const question = completion.choices[0]?.message?.content?.trim();
-  if (!question) {
-    throw new Error('Failed to generate question from OpenAI');
-  }
-
-  return question;
+  logger.debug({ questionNumber }, 'Generating question via OpenAI');
+  return callOpenAI(messages, QUESTION_MAX_TOKENS);
 }
 
 export async function generateQuestion(
   conversationHistory: Message[],
   questionNumber: number,
-  highlights?: string,
+  insights?: string,
   count: number = 1
 ): Promise<string[]> {
   const command = getCommand(questionNumber);
@@ -313,54 +321,62 @@ export async function generateQuestion(
   }
 
   const promises = Array.from({ length: count }, () =>
-    generateSingleQuestion(conversationHistory, questionNumber, highlights)
+    generateSingleQuestion(conversationHistory, questionNumber, insights)
   );
 
   return Promise.all(promises);
 }
 
-export async function generateHighlights(conversationHistory: Message[]): Promise<string> {
+export async function generateInsights(conversationHistory: Message[]): Promise<string> {
   const systemPrompts = loadSystemPrompts();
-  const highlightCommandPrompt = getHighlightsPrompt();
+  const insightsCommandPrompt = getInsightsPrompt();
   const conversationText = buildDiscussionText(conversationHistory);
 
   const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
     {
       role: 'system',
-      content: systemPrompts.highlightsPrompt,
+      content: systemPrompts.insightsPrompt,
     },
     {
       role: 'user',
       content: `Here is the discussion so far:\n\n${conversationText}`,
     },
     {
-      role: 'system',
-      content: `Current command:\n${highlightCommandPrompt}`,
+      role: 'assistant',
+      content: `Current command:\n${insightsCommandPrompt}`,
     },
   ];
 
-  const breaker = getCircuitBreaker();
-  const openai = getOpenAIClient();
-
-  const completion = await breaker.fire(async () => {
-    logger.debug('Generating highlights via OpenAI');
-    return openai.chat.completions.create({
-      model: getModel(),
-      messages,
-      temperature: RESPONSE_TEMPERATURE,
-      max_tokens: HIGHLIGHTS_MAX_TOKENS,
-    });
-  }) as OpenAI.Chat.ChatCompletion;
-
-  const highlights = completion.choices[0]?.message?.content?.trim();
-  if (!highlights) {
-    throw new Error('Failed to generate highlights from OpenAI');
-  }
-
-  return highlights;
+  logger.debug('Generating insights via OpenAI');
+  return callOpenAI(messages, KEY_INSIGHTS_MAX_TOKENS);
 }
 
-export async function generateSummary(conversationHistory: Message[], highlights?: string): Promise<string> {
+export async function generateArticleKeyInsights(text: string): Promise<string> {
+  const systemPrompts = loadSystemPrompts();
+
+  const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
+    { role: 'system', content: systemPrompts.insightsPrompt },
+    { role: 'user', content: `CONTEXT:\n\n${text}` },
+  ];
+
+  logger.debug('Generating article key insights via OpenAI');
+  return callOpenAI(messages, KEY_INSIGHTS_MAX_TOKENS);
+}
+
+export async function generateArticleSummary(text: string, keyInsights: string): Promise<string> {
+  const systemPrompts = loadSystemPrompts();
+
+  const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
+    { role: 'system', content: systemPrompts.summaryPrompt },
+    { role: 'assistant', content: `# Key Insights:\n${keyInsights}` },
+    { role: 'user', content: `Please provide a cohesive 2-3 paragraph summary.\n\n# CONTEXT\n\n${text}` },
+  ];
+
+  logger.debug('Generating article summary via OpenAI');
+  return callOpenAI(messages, SUMMARY_MAX_TOKENS);
+}
+
+export async function generateSummary(conversationHistory: Message[], insights?: string): Promise<string> {
   const systemPrompts = loadSystemPrompts();
   const conversationText = buildDiscussionText(conversationHistory);
 
@@ -375,10 +391,10 @@ export async function generateSummary(conversationHistory: Message[], highlights
     },
   ];
 
-  if (highlights) {
+  if (insights) {
     messages.push({
-      role: 'system',
-      content: `# Key Insights:\n${highlights}`,
+      role: 'assistant',
+      content: `# Key Insights:\n${insights}`,
     });
   }
 
@@ -387,23 +403,6 @@ export async function generateSummary(conversationHistory: Message[], highlights
     content: 'Please provide a cohesive 2-3 paragraph summary.',
   });
 
-  const breaker = getCircuitBreaker();
-  const openai = getOpenAIClient();
-
-  const completion = await breaker.fire(async () => {
-    logger.debug('Generating summary via OpenAI');
-    return openai.chat.completions.create({
-      model: getModel(),
-      messages,
-      temperature: RESPONSE_TEMPERATURE,
-      max_tokens: SUMMARY_MAX_TOKENS,
-    });
-  }) as OpenAI.Chat.ChatCompletion;
-
-  const summary = completion.choices[0]?.message?.content?.trim();
-  if (!summary) {
-    throw new Error('Failed to generate summary from OpenAI');
-  }
-
-  return summary;
+  logger.debug('Generating summary via OpenAI');
+  return callOpenAI(messages, SUMMARY_MAX_TOKENS);
 }

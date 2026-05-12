@@ -35,6 +35,12 @@ npm run build && npm start
 
 Schema changes: edit `backend/database/schema.sql`, delete `backend/data/10q.db`, restart.
 
+## Environment variables
+
+New environment variables must be added to `.env.example` (with a comment explaining the tradeoff) and documented in the relevant file under `docs/`.
+
+Constants sourced from `process.env` at module load time (e.g. in `config/article.ts`) are fixed when the module is first imported. Tests that need to override them must mock the entire config module: `vi.mock('../../config/article.js', () => ({ ..., DELAY_MS: 0 }))` — setting `process.env` after import has no effect.
+
 ## Testing notes
 
 Run test files from `backend/` or `frontend/` — running `npx vitest run` from the repo root uses the wrong environment config and produces spurious failures.
@@ -57,29 +63,37 @@ Route handlers are thin: auth/validation/response shaping only. Domain policy li
 
 ### Core question progression
 
-Creating a conversation triggers Q1 generation immediately. Each user response triggers: highlights generation → next question generation (or summary generation if Q10). All three LLM calls pass the full message history. The OpenAI service wraps calls in a circuit breaker (opossum). Q1 may use a `staticQuestion` defined in `config/commands.json` rather than calling the LLM.
+Creating a conversation triggers Q1 generation immediately. Each user response triggers: insights generation → next question generation (or summary generation if Q10). All three LLM calls pass the full message history. The OpenAI service wraps calls in a circuit breaker (opossum). Q1 may use a `staticQuestion` defined in `config/commands.json` rather than calling the LLM — `staticQuestion` always takes precedence, even when article context is present.
 
 Multiple question options are generated per step and all persisted to the DB immediately. `openaiService.generateQuestion` always returns `string[]`. Steps with a `staticQuestion` return a single-element array without calling the LLM. When the user submits a response, all stored options for that step are deleted and only the selected question is re-saved, so the conversation history contains exactly one question per step.
 
 The frontend derives carousel options directly from `conversation.messages` — it filters for unanswered question messages and reads the options from the DB rather than from API response payloads.
 
-Message types stored in the DB: `question`, `response`, `summary`, `highlight`. Multiple `question` rows can share a `questionNumber` while options are pending selection. Highlights are regenerated after every response and stored as the latest `highlight` message; the summary receives the latest highlights content as additional context.
+Message types stored in the DB: `question`, `response`, `summary`, `insight`, `conversation_context`. Multiple `question` rows can share a `questionNumber` while options are pending selection. Insights are regenerated after every response and stored as the latest `insight` message; the summary receives the latest insights content as additional context. Adding a new message type requires: updating the CHECK constraint in `backend/database/schema.sql`, the `Message.type` union in both `backend/src/types.ts` and `frontend/src/types.ts`, and the type parameters in the store interface, store implementation, and service.
 
 ### Configuration
 
 `config/commands.json` — the 10-question plan (name, prompt, optional `staticQuestion` per step).  
-`config/system-prompts.json` — system prompts for question generation, summarization, and highlights.  
+`config/system-prompts.json` — system prompts for question generation, summarization, and insights. These are hand-tuned and validated through real use. Do not rewrite or refactor them without explicit instruction — changes that look like improvements often degrade output quality in subtle ways.  
 Both are loaded at startup from `backend/src/config/`.
 
-Validation constants (max title/response length) are duplicated in `backend/src/config/validation.ts` and `frontend/src/config/validation.ts` — keep them in sync.
+Validation constants (max title/response length) are duplicated in `backend/src/config/validation.ts` and `frontend/src/config/validation.ts` — keep them in sync. A test asserts these files are byte-for-byte identical; backend-only constants must go in a separate file, not in `validation.ts`.
 
 ### Auth and permissions
 
 Google OAuth via Passport. Sessions stored in SQLite (`better-sqlite3-session-store`). `requireAuth` middleware gates all `/api/*` routes except `/ping` and `/deep-ping`. Per-user permissions (e.g. `regenerate_summary_question`) are checked via `requirePermission` middleware. Admin users manage the Google account allowlist.
 
+### OpenAI message roles
+
+In `openai.service.ts`, only the actual system prompt entry (e.g. `systemPrompts.questionPrompt`) uses `role: 'system'`. All other contextual messages — command blocks, key insights, conversation context — use `role: 'assistant'`. This matches the OpenAI convention that only one system message should anchor the request.
+
 ### Frontend
 
 All API calls go through `frontend/src/hooks/useApi.ts` (plain async functions, not a React hook). `fetchApi()` handles JSON headers, error parsing, and 204 responses. Frontend types use ISO strings for dates; backend types use `Date` objects — map at the store layer.
+
+## Design decisions
+
+Consult `AGENTS.md` when making architectural decisions, choosing between implementation approaches, or deciding how a feature should behave. It contains project tenets and principles that should shape the design — not just the code style.
 
 ## Key principles (from AGENTS.md)
 

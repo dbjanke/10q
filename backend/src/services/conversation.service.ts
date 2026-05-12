@@ -19,7 +19,7 @@ export function deleteConversation(userId: number, id: number): boolean {
 
 export function saveMessage(
   conversationId: number,
-  type: 'question' | 'response' | 'summary' | 'highlight',
+  type: 'question' | 'response' | 'summary' | 'insight' | 'conversation_context',
   content: string,
   questionNumber?: number
 ): Message {
@@ -48,7 +48,7 @@ export function getConversationMessages(conversationId: number): Message[] {
 
 export function deleteConversationMessagesByType(
   conversationId: number,
-  type: 'question' | 'response' | 'summary' | 'highlight'
+  type: 'question' | 'response' | 'summary' | 'insight' | 'conversation_context'
 ): void {
   getConversationStore().deleteConversationMessagesByType(conversationId, type);
 }

@@ -408,6 +408,10 @@ details summary svg {
   animation: bounce 1s infinite ease-in-out;
 }
 
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
 @keyframes bounce {
 
   0%,

@@ -447,9 +447,9 @@ describe('ConversationView - Completion Flow', () => {
 
     it('shows latest key insights section and allows regenerating key insights', async () => {
         const user = userEvent.setup();
-        const currentUserWithHighlightsPermission = {
+        const currentUserWithInsightsPermission = {
             ...currentUser,
-            permissions: ['regenerate_highlights'] as const,
+            permissions: ['regenerate_insights'] as const,
         };
 
         const inProgressConversation = {
@@ -471,7 +471,7 @@ describe('ConversationView - Completion Flow', () => {
                 {
                     id: 2,
                     conversationId: 1,
-                    type: 'highlight',
+                    type: 'insight',
                     content: 'Unique ideas\n- Strong long-term view',
                     createdAt: new Date().toISOString(),
                 },
@@ -479,19 +479,19 @@ describe('ConversationView - Completion Flow', () => {
         };
 
         vi.mocked(api.getConversation).mockResolvedValue(inProgressConversation as any);
-        vi.mocked(api.regenerateHighlights).mockResolvedValue({
-            highlights: {
+        vi.mocked(api.regenerateInsights).mockResolvedValue({
+            insights: {
                 id: 3,
                 conversationId: 1,
-                type: 'highlight',
-                content: 'Regenerated highlights',
+                type: 'insight',
+                content: 'Regenerated insights',
                 createdAt: new Date().toISOString(),
             },
         } as any);
 
         render(
             <BrowserRouter>
-                <ConversationView currentUser={currentUserWithHighlightsPermission as any} onLogout={vi.fn()} />
+                <ConversationView currentUser={currentUserWithInsightsPermission as any} onLogout={vi.fn()} />
             </BrowserRouter>
         );
 
@@ -506,11 +506,11 @@ describe('ConversationView - Completion Flow', () => {
             expect(screen.getByText((content) => content.includes('Unique ideas'))).toBeInTheDocument();
         });
 
-        const regenerateHighlightsButton = screen.getByRole('button', { name: 'Regenerate key insights' });
-        await user.click(regenerateHighlightsButton);
+        const regenerateInsightsButton = screen.getByRole('button', { name: 'Regenerate key insights' });
+        await user.click(regenerateInsightsButton);
 
         await waitFor(() => {
-            expect(api.regenerateHighlights).toHaveBeenCalledWith(1);
+            expect(api.regenerateInsights).toHaveBeenCalledWith(1);
         });
     });
 
@@ -536,7 +536,7 @@ describe('ConversationView - Completion Flow', () => {
                 {
                     id: 2,
                     conversationId: 1,
-                    type: 'highlight',
+                    type: 'insight',
                     content: 'Unique ideas\n- Strong long-term view',
                     createdAt: new Date().toISOString(),
                 },
@@ -783,6 +783,98 @@ describe('ConversationView - Completion Flow', () => {
 
         await waitFor(() => {
             expect(screen.getByText('Failed to generate question')).toBeInTheDocument();
+        });
+    });
+
+    describe('article context rendering', () => {
+        const contextConversation = {
+            id: 1,
+            title: 'Article Session',
+            summary: null,
+            createdAt: new Date().toISOString(),
+            completed: false,
+            currentQuestionNumber: 1,
+            messages: [
+                {
+                    id: 1,
+                    conversationId: 1,
+                    type: 'conversation_context',
+                    content: '## CONTEXT\n\nThis article explores the nature of focus.',
+                    createdAt: new Date().toISOString(),
+                },
+                {
+                    id: 2,
+                    conversationId: 1,
+                    type: 'question',
+                    content: 'What resonates most with you from the article?',
+                    questionNumber: 1,
+                    createdAt: new Date().toISOString(),
+                },
+            ],
+        };
+
+        it('shows Article Context card with summary (stripped header) in in-progress view', async () => {
+            vi.mocked(api.getConversation).mockResolvedValue(contextConversation as any);
+
+            render(
+                <BrowserRouter>
+                    <ConversationView currentUser={currentUser} onLogout={vi.fn()} />
+                </BrowserRouter>
+            );
+
+            await waitFor(() => {
+                expect(screen.getByText('Article Context')).toBeInTheDocument();
+            });
+            expect(screen.getByText('This article explores the nature of focus.')).toBeInTheDocument();
+            expect(screen.queryByText('## CONTEXT')).not.toBeInTheDocument();
+        });
+
+        it('shows Article Context card inside collapsed history in completed view', async () => {
+            const completedConversation = {
+                ...contextConversation,
+                completed: true,
+                messages: [
+                    ...contextConversation.messages,
+                    {
+                        id: 3,
+                        conversationId: 1,
+                        type: 'response',
+                        content: 'My response.',
+                        questionNumber: 1,
+                        createdAt: new Date().toISOString(),
+                    },
+                    {
+                        id: 4,
+                        conversationId: 1,
+                        type: 'summary',
+                        content: 'A reflective summary.',
+                        questionNumber: null,
+                        createdAt: new Date().toISOString(),
+                    },
+                ],
+            };
+
+            vi.mocked(api.getConversation).mockResolvedValue(completedConversation as any);
+
+            render(
+                <BrowserRouter>
+                    <ConversationView currentUser={currentUser} onLogout={vi.fn()} />
+                </BrowserRouter>
+            );
+
+            await waitFor(() => {
+                expect(screen.getByTestId('summary')).toBeInTheDocument();
+            });
+
+            // Article Context is inside the <details> collapsed history — open it
+            const details = document.querySelector('details') as HTMLDetailsElement;
+            details.open = true;
+            details.dispatchEvent(new Event('toggle'));
+
+            await waitFor(() => {
+                expect(screen.getByText('Article Context')).toBeInTheDocument();
+            });
+            expect(screen.getByText('This article explores the nature of focus.')).toBeInTheDocument();
         });
     });
 });

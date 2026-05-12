@@ -1,14 +1,14 @@
 import { Message } from '../types';
 
 interface KeyInsightsProps {
-    highlight?: Message;
+    insight?: Message;
     canRegenerate?: boolean;
     regenerating?: boolean;
     disabled?: boolean;
     onRegenerate?: () => void;
 }
 
-export default function KeyInsights({ highlight, canRegenerate, regenerating, disabled, onRegenerate }: KeyInsightsProps) {
+export default function KeyInsights({ insight, canRegenerate, regenerating, disabled, onRegenerate }: KeyInsightsProps) {
     return (
         <details className="card">
             <summary className="details-summary">
@@ -38,7 +38,7 @@ export default function KeyInsights({ highlight, canRegenerate, regenerating, di
                         </button>
                     </div>
                 )}
-                {highlight ? (
+                {insight ? (
                     <pre
                         style={{
                             margin: 0,
@@ -47,7 +47,7 @@ export default function KeyInsights({ highlight, canRegenerate, regenerating, di
                             lineHeight: 1.5,
                         }}
                     >
-                        {highlight.content}
+                        {insight.content}
                     </pre>
                 ) : (
                     <p className="muted" style={{ margin: 0 }}>

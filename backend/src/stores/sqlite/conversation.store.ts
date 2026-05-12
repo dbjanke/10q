@@ -88,7 +88,7 @@ export class SQLiteConversationStore implements ConversationStore {
 
     saveMessage(
         conversationId: number,
-        type: 'question' | 'response' | 'summary' | 'highlight',
+        type: 'question' | 'response' | 'summary' | 'insight' | 'conversation_context',
         content: string,
         questionNumber?: number
     ): Message {
@@ -158,7 +158,7 @@ export class SQLiteConversationStore implements ConversationStore {
 
     deleteConversationMessagesByType(
         conversationId: number,
-        type: 'question' | 'response' | 'summary' | 'highlight'
+        type: 'question' | 'response' | 'summary' | 'insight' | 'conversation_context'
     ): void {
         const db = getDatabase();
 

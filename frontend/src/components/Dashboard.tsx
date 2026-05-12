@@ -18,6 +18,11 @@ export default function Dashboard({ currentUser, onLogout }: DashboardProps) {
   const [newTitle, setNewTitle] = useState('');
   const [creating, setCreating] = useState(false);
   const [modalError, setModalError] = useState<string | null>(null);
+  const [articleFile, setArticleFile] = useState<File | null>(null);
+  const [articleContext, setArticleContext] = useState<{ keyInsights: string; summary: string } | null>(null);
+  const [articleTruncated, setArticleTruncated] = useState(false);
+  const [uploadingArticle, setUploadingArticle] = useState(false);
+  const [articleUploadError, setArticleUploadError] = useState<string | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -38,6 +43,40 @@ export default function Dashboard({ currentUser, onLogout }: DashboardProps) {
     }
   }
 
+  async function handleArticleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setArticleFile(file);
+    setArticleContext(null);
+    setArticleTruncated(false);
+    setArticleUploadError(null);
+    setUploadingArticle(true);
+
+    try {
+      const { truncated, ...context } = await api.uploadArticle(file);
+      setArticleContext(context);
+      setArticleTruncated(truncated);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to process article';
+      setArticleUploadError(msg);
+      setArticleFile(null);
+    } finally {
+      setUploadingArticle(false);
+    }
+  }
+
+  function handleCloseModal() {
+    setShowNewModal(false);
+    setNewTitle('');
+    setModalError(null);
+    setArticleFile(null);
+    setArticleContext(null);
+    setArticleTruncated(false);
+    setArticleUploadError(null);
+    setUploadingArticle(false);
+  }
+
   async function handleCreateConversation(e: React.FormEvent) {
     e.preventDefault();
     if (!newTitle.trim() || newTitle.length > MAX_TITLE_LENGTH) return;
@@ -45,7 +84,12 @@ export default function Dashboard({ currentUser, onLogout }: DashboardProps) {
     try {
       setCreating(true);
       setModalError(null);
-      const result = await api.createConversation(newTitle.trim());
+      const result = await api.createConversation(
+        newTitle.trim(),
+        articleContext
+          ? { contextSummary: articleContext.summary, contextKeyInsights: articleContext.keyInsights }
+          : undefined
+      );
       navigate(`/conversation/${result.conversation.id}`);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to create conversation';
@@ -186,6 +230,63 @@ export default function Dashboard({ currentUser, onLogout }: DashboardProps) {
               >
                 {newTitle.length} / {MAX_TITLE_LENGTH} characters
               </div>
+              <div style={{ marginTop: 20 }}>
+                <label className="muted" style={{ fontSize: 14, fontWeight: 600, marginBottom: 8, display: 'block' }}>
+                  Add an article for context (optional)
+                </label>
+                <div style={{ position: 'relative' }}>
+                  <input
+                    type="file"
+                    accept=".pdf,application/pdf"
+                    onChange={handleArticleFileChange}
+                    disabled={creating || uploadingArticle}
+                    style={{ display: 'block', width: '100%' }}
+                  />
+                  {uploadingArticle && (
+                    <div style={{
+                      position: 'absolute',
+                      inset: 0,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 10,
+                      background: 'var(--color-surface, #fff)',
+                      borderRadius: 6,
+                      border: '1px solid var(--color-border, #e5e7eb)',
+                    }}>
+                      <svg
+                        width="18"
+                        height="18"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2.5"
+                        strokeLinecap="round"
+                        style={{ animation: 'spin 0.8s linear infinite', flexShrink: 0 }}
+                      >
+                        <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+                      </svg>
+                      <span className="muted-small">Processing article...</span>
+                    </div>
+                  )}
+                </div>
+                {articleContext && !uploadingArticle && (
+                  <>
+                    <p className="muted-small" style={{ marginTop: 6, color: '#16a34a' }}>
+                      Article ready: {articleFile?.name}
+                    </p>
+                    {articleTruncated && (
+                      <p className="muted-small" style={{ marginTop: 4, color: '#92400e' }}>
+                        Note: this article is long and was partially analyzed. The first ~20,000 words were used.
+                      </p>
+                    )}
+                  </>
+                )}
+                {articleUploadError && (
+                  <p className="muted-small" style={{ marginTop: 6, color: '#c2410c' }}>{articleUploadError}</p>
+                )}
+              </div>
+
               {modalError && (
                 <div className="error" style={{ marginTop: 12 }}>
                   {modalError}
@@ -194,11 +295,7 @@ export default function Dashboard({ currentUser, onLogout }: DashboardProps) {
               <div className="modal-footer">
                 <button
                   type="button"
-                  onClick={() => {
-                    setShowNewModal(false);
-                    setNewTitle('');
-                    setModalError(null);
-                  }}
+                  onClick={handleCloseModal}
                   className="btn btn-ghost"
                   disabled={creating}
                 >
@@ -206,7 +303,7 @@ export default function Dashboard({ currentUser, onLogout }: DashboardProps) {
                 </button>
                 <button
                   type="submit"
-                  disabled={!newTitle.trim() || newTitle.length > MAX_TITLE_LENGTH || creating}
+                  disabled={!newTitle.trim() || newTitle.length > MAX_TITLE_LENGTH || creating || uploadingArticle}
                   className="btn btn-primary"
                 >
                   {creating ? 'Creating...' : 'Start'}

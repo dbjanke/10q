@@ -190,7 +190,7 @@ describe('Routes - Validation', () => {
             });
 
             vi.mocked(conversationService.getConversationMessages).mockReturnValue([] as any);
-            vi.mocked(openaiService.generateHighlights).mockResolvedValue('Highlights');
+            vi.mocked(openaiService.generateInsights).mockResolvedValue('Highlights');
             vi.mocked(conversationService.saveMessage)
                 .mockReturnValueOnce({
                     id: 1,
@@ -203,7 +203,7 @@ describe('Routes - Validation', () => {
                 .mockReturnValueOnce({
                     id: 2,
                     conversationId: 1,
-                    type: 'highlight',
+                    type: 'insight',
                     content: 'Highlights',
                     createdAt: new Date().toISOString(),
                 } as any);
@@ -232,7 +232,7 @@ describe('Routes - Validation', () => {
             });
 
             vi.mocked(conversationService.getConversationMessages).mockReturnValue([] as any);
-            vi.mocked(openaiService.generateHighlights).mockResolvedValue('Highlights');
+            vi.mocked(openaiService.generateInsights).mockResolvedValue('Highlights');
             vi.mocked(conversationService.saveMessage)
                 .mockReturnValueOnce({
                     id: 1,
@@ -245,7 +245,7 @@ describe('Routes - Validation', () => {
                 .mockReturnValueOnce({
                     id: 2,
                     conversationId: 1,
-                    type: 'highlight',
+                    type: 'insight',
                     content: 'Highlights',
                     createdAt: new Date().toISOString(),
                 } as any);
