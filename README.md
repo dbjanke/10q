@@ -1,6 +1,6 @@
 # 10Q - Guided Thinking Application
 
-10Q is a guided‑thinking web app that asks 10 AI‑generated questions about a topic you choose. Each question builds on your prior answers to move from surface context to deeper insight, and the session concludes with a cohesive summary you can review or export.
+10Q is a guided‑thinking web app that asks 10 AI‑generated questions about a topic you choose. Each question builds on your prior answers to move from surface context to deeper insight, and the session concludes with a summary and highlights you can review or export.
 
 ## Prerequisites
 
@@ -19,7 +19,7 @@
 1. **Start a Conversation**: Click "Start New Conversation" and enter a topic
 2. **Answer Questions**: Respond thoughtfully to each AI-generated question
 3. **Progress Through All 10**: Each question adapts based on your previous answers
-4. **Receive Summary**: Get an automatic summary after completing all questions
+4. **Receive Summary and Highlights**: Get an automatic summary and key insights after completing all questions
 5. **Export or Review**: Export to Markdown or return to the dashboard to start another conversation
 
 ## Configuration

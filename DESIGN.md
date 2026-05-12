@@ -1,0 +1,89 @@
+# 10Q — Design Document
+
+## Purpose
+
+10Q is a guided-thinking tool that helps users reach genuine insight on a topic they are wrestling with. Rather than letting users stay at the surface level of a problem, 10Q moves them through a structured sequence of ten questions. Each question introduces a new challenge, and each answer creates the material for the next challenge. The session ends with a synthesis of what became clear.
+
+The intended experience is not a conversation so much as a reckoning. The questions are designed to be uncomfortable in a productive way — pressing on assumptions, surfacing what is really at stake, and naming things the user has not fully said.
+
+---
+
+## Core Experience
+
+### Starting a Session
+
+The user provides a topic — something they are actively wrestling with, not a research question or an abstract subject. The system opens with a fixed question:
+
+> *What's something you're wrestling with, and what feels true about it that you can't fully explain yet?*
+
+This framing establishes the tone: the user should bring something live, not rehearsed.
+
+### The Ten Questions
+
+Questions are generated one at a time. Each question is a single, open-ended sentence. After the user responds, the next question is generated using the full conversation so far as context. The questions are not generic — they press on the specific claims, framings, and commitments the user has made.
+
+The ten questions follow a fixed progression. Each stage has a distinct purpose:
+
+| # | Stage | Purpose |
+|---|-------|---------|
+| 1 | **Set the focus and stakes** | Establish what the user is exploring, why it matters now, and what prompted this line of thinking. |
+| 2 | **Surface the real concern** | Press past the user's first framing to find the deeper tension, uncertainty, or fear underneath. |
+| 3 | **Articulate the perceived structure** | Push the user to explain how they think the situation actually works — connecting parts, pressures, and causes rather than staying at the level of impressions. |
+| 4 | **Pressure the hidden assumptions** | Challenge the assumptions, biases, and framings in the user's view. Press on what they are taking for granted, overlooking, or treating too simply. |
+| 5 | **Rebuild the picture** | Use the pressure from stage 4 to help the user form a clearer account: what now looks different, what still holds, and how the parts fit under a sharper view. |
+| 6 | **Expose the gut logic** | Push beneath the stated view to surface the gut reaction or deeper belief — what the user seems to fear, protect, or treat as a fundamental truth about how the world works. |
+| 7 | **Re-anchor around the deeper belief** | Use the belief surfaced in stage 6 to sharpen the user's picture of the original issue, showing how that underlying reaction shapes what they notice and treat as important. |
+| 8 | **Surface the cost** | Name a specific cost or trade-off embedded in the user's current position — something they are implicitly choosing to leave behind or discount — and press them on whether they are actually willing to accept it. The system names the cost; the user must defend it. |
+| 9 | **Reframe through the cost** | Use the cost from stage 8 to press the user toward a sharper account of what the issue is really about and what is actually at stake. |
+| 10 | **Extend the consequence** | Take the user's sharpened position as true and name one concrete, under-explored consequence it implies — something that complicates their position rather than celebrates it. The system names the consequence; the user must reckon with it. |
+
+A key design principle across all ten stages: **the questions target the user's own beliefs and framings, not the people, systems, or topics they discuss.** When a user talks about other people, the question treats that as evidence of the user's commitments — and presses on those.
+
+### Completion
+
+After each response, the system generates a fresh set of **Key Insights** — a flat list of high-signal observations drawn from the conversation so far. These replace the prior set and are passed as context when generating the next question. Key Insights prioritize non-obvious ideas, gaps between what was argued and what was defended, self-undermining patterns, and live unresolved tension. Fewer, sharper insights are preferred over completeness.
+
+After the tenth response, the system additionally generates a **Summary**: a standalone synthesis of the most important insights that emerged — written as if presenting the thinking itself, not describing a discussion. It leads immediately with the core realization or tension, names what is happening beneath the surface, and preserves unresolved edges rather than smoothing everything into a conclusion.
+
+The user can export the full session — questions, responses, summary, and key insights — as a Markdown document.
+
+---
+
+## User-Facing Features
+
+### Dashboard
+
+Users see a list of all their past conversations with title, date, and completion status. They can open any past conversation to review it, start a new one, or delete an existing one.
+
+### Conversation View
+
+The active session displays the questions and responses in sequence. The current question is presented one at a time; the user cannot advance without responding. Completed conversations are read-only.
+
+### Export
+
+A completed conversation can be exported as a Markdown file containing the full exchange plus the summary and key insights.
+
+---
+
+## Data Model
+
+**Conversation** — A single session. Has a user-provided title (editable), a current question index (1–10), a completion flag, and belongs to a user.
+
+**Message** — An individual unit of content within a conversation. Types include: question (AI-generated), response (user-authored), summary (AI-generated at completion), and key insight (AI-generated after each response; only the latest set is retained).
+
+**User** — An authenticated account. Has an email address and a role (user or admin).
+
+---
+
+## AI Behavior Requirements
+
+The system relies on a large language model to generate questions and session outputs. The following behavioral requirements apply regardless of which model or provider is used:
+
+- **One question at a time.** Each generated question is a single open-ended sentence. No follow-ups, no lists, no preamble.
+- **Grounded in the conversation.** A question that could have been generated without reading the conversation is wrong. The question must press on something specific the user has said.
+- **Shifts the level of analysis.** Each question must introduce a structural demand the user cannot satisfy by restating what they already said. It should move between levels: description → mechanism, claim → causal chain, pattern → constraint.
+- **Everyday language.** Short verbs, concrete nouns, no academic or abstract phrasing.
+- **Summary is interpretive, not descriptive.** The summary should name what happened beneath the stated topic, preserve tension, and avoid narrating the flow of the conversation.
+- **Key Insights are sharp, not comprehensive.** The system should prefer fewer, more pointed insights over cataloguing everything said.
+- **Key Insights inform subsequent questions.** After each response, the system generates a fresh set of key insights from the conversation so far and includes them when generating the next question. This is a quality requirement: questions generated without current insights will be shallower.
+- **The system must handle AI unavailability gracefully.** If the AI service is unavailable or slow, the user should receive a clear error rather than a hung interface.
