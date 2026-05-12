@@ -43,12 +43,15 @@ export interface User {
 
 export interface CreateConversationResponse {
   conversation: Conversation;
-  firstQuestion: Message;
+}
+
+export interface SubmitResponseRequest {
+  response: string;
+  selectedQuestion: string;
 }
 
 export interface ResponseSubmissionResult {
   savedResponse: Message;
-  nextQuestion?: Message;
   summary?: string;
   isComplete: boolean;
 }

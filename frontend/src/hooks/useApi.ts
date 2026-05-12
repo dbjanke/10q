@@ -3,6 +3,7 @@ import {
   ConversationWithMessages,
   CreateConversationResponse,
   ResponseSubmissionResult,
+  SubmitResponseRequest,
   Message,
   Group,
   Permission,
@@ -146,11 +147,16 @@ export async function regenerateHighlights(conversationId: number): Promise<{ hi
 
 export async function submitResponse(
   conversationId: number,
-  response: string
+  response: string,
+  selectedQuestion: string
 ): Promise<ResponseSubmissionResult> {
+  const body: SubmitResponseRequest = {
+    response,
+    selectedQuestion,
+  };
   return fetchApi<ResponseSubmissionResult>(`/conversations/${conversationId}/response`, {
     method: 'POST',
-    body: JSON.stringify({ response }),
+    body: JSON.stringify(body),
   });
 }
 

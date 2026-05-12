@@ -257,4 +257,148 @@ describe('conversation.service', () => {
             expect(updated?.completed).toBe(true);
         });
     });
+
+    describe('updateConversationTitle', () => {
+        it('should update the conversation title', () => {
+            const userId = createTestUser(mockDb);
+            const conversation = conversationService.createConversation(userId, 'Original Title');
+
+            conversationService.updateConversationTitle(conversation.id, 'Updated Title');
+
+            const updated = conversationService.getConversationById(userId, conversation.id);
+            expect(updated?.title).toBe('Updated Title');
+        });
+
+        it('should not affect other conversation fields when updating title', () => {
+            const userId = createTestUser(mockDb);
+            const conversation = conversationService.createConversation(userId, 'Original');
+            conversationService.updateConversationProgress(conversation.id, 5);
+
+            conversationService.updateConversationTitle(conversation.id, 'Renamed');
+
+            const updated = conversationService.getConversationById(userId, conversation.id);
+            expect(updated?.title).toBe('Renamed');
+            expect(updated?.currentQuestionNumber).toBe(5);
+            expect(updated?.completed).toBe(false);
+        });
+    });
+
+    describe('getConversationMessages', () => {
+        it('should return all messages for a conversation', () => {
+            const userId = createTestUser(mockDb);
+            const conversation = conversationService.createConversation(userId, 'Test');
+            conversationService.saveMessage(conversation.id, 'question', 'Q1?', 1);
+            conversationService.saveMessage(conversation.id, 'response', 'A1', 1);
+            conversationService.saveMessage(conversation.id, 'highlight', 'Some insight');
+
+            const messages = conversationService.getConversationMessages(conversation.id);
+
+            expect(messages).toHaveLength(3);
+            expect(messages.map(m => m.type)).toEqual(['question', 'response', 'highlight']);
+        });
+
+        it('should return empty array for conversation with no messages', () => {
+            const userId = createTestUser(mockDb);
+            const conversation = conversationService.createConversation(userId, 'Test');
+
+            const messages = conversationService.getConversationMessages(conversation.id);
+
+            expect(messages).toEqual([]);
+        });
+
+        it('should only return messages for the given conversation', () => {
+            const userId = createTestUser(mockDb);
+            const conv1 = conversationService.createConversation(userId, 'Conv 1');
+            const conv2 = conversationService.createConversation(userId, 'Conv 2');
+            conversationService.saveMessage(conv1.id, 'question', 'Q for conv1', 1);
+            conversationService.saveMessage(conv2.id, 'question', 'Q for conv2', 1);
+
+            const messages = conversationService.getConversationMessages(conv1.id);
+
+            expect(messages).toHaveLength(1);
+            expect(messages[0].content).toBe('Q for conv1');
+        });
+    });
+
+    describe('deleteConversationMessagesByType', () => {
+        it('should delete only messages of the specified type', () => {
+            const userId = createTestUser(mockDb);
+            const conversation = conversationService.createConversation(userId, 'Test');
+            conversationService.saveMessage(conversation.id, 'question', 'Q1?', 1);
+            conversationService.saveMessage(conversation.id, 'response', 'A1', 1);
+            conversationService.saveMessage(conversation.id, 'highlight', 'Insight 1');
+            conversationService.saveMessage(conversation.id, 'highlight', 'Insight 2');
+
+            conversationService.deleteConversationMessagesByType(conversation.id, 'highlight');
+
+            const messages = conversationService.getConversationMessages(conversation.id);
+            expect(messages).toHaveLength(2);
+            expect(messages.every(m => m.type !== 'highlight')).toBe(true);
+        });
+
+        it('should leave conversation intact when deleting a type with no messages', () => {
+            const userId = createTestUser(mockDb);
+            const conversation = conversationService.createConversation(userId, 'Test');
+            conversationService.saveMessage(conversation.id, 'question', 'Q1?', 1);
+
+            conversationService.deleteConversationMessagesByType(conversation.id, 'summary');
+
+            const messages = conversationService.getConversationMessages(conversation.id);
+            expect(messages).toHaveLength(1);
+        });
+
+        it('should replace old highlights when saving new ones', () => {
+            const userId = createTestUser(mockDb);
+            const conversation = conversationService.createConversation(userId, 'Test');
+            conversationService.saveMessage(conversation.id, 'highlight', 'Old insight');
+
+            conversationService.deleteConversationMessagesByType(conversation.id, 'highlight');
+            conversationService.saveMessage(conversation.id, 'highlight', 'New insight');
+
+            const messages = conversationService.getConversationMessages(conversation.id);
+            const highlights = messages.filter(m => m.type === 'highlight');
+            expect(highlights).toHaveLength(1);
+            expect(highlights[0].content).toBe('New insight');
+        });
+    });
+
+    describe('deleteQuestionMessage', () => {
+        it('should delete the question for the given question number', () => {
+            const userId = createTestUser(mockDb);
+            const conversation = conversationService.createConversation(userId, 'Test');
+            conversationService.saveMessage(conversation.id, 'question', 'Q1?', 1);
+            conversationService.saveMessage(conversation.id, 'question', 'Q2?', 2);
+
+            conversationService.deleteQuestionMessage(conversation.id, 1);
+
+            const messages = conversationService.getConversationMessages(conversation.id);
+            const questions = messages.filter(m => m.type === 'question');
+            expect(questions).toHaveLength(1);
+            expect(questions[0].questionNumber).toBe(2);
+        });
+
+        it('should not delete the response for the same question number', () => {
+            const userId = createTestUser(mockDb);
+            const conversation = conversationService.createConversation(userId, 'Test');
+            conversationService.saveMessage(conversation.id, 'question', 'Q1?', 1);
+            conversationService.saveMessage(conversation.id, 'response', 'A1', 1);
+
+            conversationService.deleteQuestionMessage(conversation.id, 1);
+
+            const messages = conversationService.getConversationMessages(conversation.id);
+            expect(messages).toHaveLength(1);
+            expect(messages[0].type).toBe('response');
+        });
+
+        it('should be a no-op when question number does not exist', () => {
+            const userId = createTestUser(mockDb);
+            const conversation = conversationService.createConversation(userId, 'Test');
+            conversationService.saveMessage(conversation.id, 'question', 'Q1?', 1);
+
+            conversationService.deleteQuestionMessage(conversation.id, 5);
+
+            const messages = conversationService.getConversationMessages(conversation.id);
+            expect(messages).toHaveLength(1);
+        });
+    });
 });

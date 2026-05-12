@@ -4,6 +4,7 @@ import { ConversationWithMessages, Message, User } from '../types';
 import * as api from '../hooks/useApi';
 import { MAX_TITLE_LENGTH } from '../config/validation';
 import QuestionCard from './QuestionCard';
+import QuestionCarousel from './QuestionCarousel';
 import ResponseInput from './ResponseInput';
 import Summary from './Summary';
 import KeyInsights from './KeyInsights';
@@ -34,6 +35,8 @@ export default function ConversationView({ currentUser, onLogout }: Conversation
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [conversation, setConversation] = useState<ConversationWithMessages | null>(null);
+  const [currentQuestionOptions, setCurrentQuestionOptions] = useState<Message[]>([]);
+  const [selectedQuestion, setSelectedQuestion] = useState<Message | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [regeneratingSummary, setRegeneratingSummary] = useState(false);
@@ -51,6 +54,25 @@ export default function ConversationView({ currentUser, onLogout }: Conversation
       loadConversation(parseInt(id));
     }
   }, [id]);
+
+  // Derive the carousel options for the current unanswered step directly from
+  // the persisted messages. No API call needed — all options are stored in the DB.
+  useEffect(() => {
+    if (!conversation || conversation.completed) return;
+
+    const questions = conversation.messages.filter((m) => m.type === 'question');
+    const responses = conversation.messages.filter((m) => m.type === 'response');
+
+    const currentQNum = questions.find(
+      (q) => !responses.some((r) => r.questionNumber === q.questionNumber)
+    )?.questionNumber;
+
+    if (!currentQNum) return;
+
+    const options = questions.filter((q) => q.questionNumber === currentQNum);
+    setCurrentQuestionOptions(options);
+    setSelectedQuestion(options[0]);
+  }, [conversation]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -74,40 +96,29 @@ export default function ConversationView({ currentUser, onLogout }: Conversation
     }
   }
 
+  async function refreshConversation(conversationId: number) {
+    try {
+      const data = await api.getConversation(conversationId);
+      setConversation(data);
+      setError(null);
+    } catch (err) {
+      setError('Failed to load conversation');
+      console.error(err);
+    }
+  }
+
   async function handleResponseSubmit(response: string) {
-    if (!conversation) return;
+    if (!conversation || !selectedQuestion) return;
 
     try {
       setSubmitting(true);
       setError(null);
+      setCurrentQuestionOptions([]);
+      setSelectedQuestion(null);
 
-      const result = await api.submitResponse(conversation.id, response);
+      await api.submitResponse(conversation.id, response, selectedQuestion.content);
 
-      // If conversation is now complete, reload to get the summary
-      if (result.isComplete) {
-        await loadConversation(conversation.id);
-        return;
-      }
-
-      // Optimistically update the conversation state for non-complete responses
-      setConversation((prev) => {
-        if (!prev) return prev;
-
-        const updatedMessages = [...prev.messages, result.savedResponse];
-
-        if (result.nextQuestion) {
-          updatedMessages.push(result.nextQuestion);
-        }
-
-        return {
-          ...prev,
-          messages: updatedMessages,
-          currentQuestionNumber: result.nextQuestion?.questionNumber || prev.currentQuestionNumber,
-          completed: result.isComplete,
-        };
-      });
-
-      // Scroll to the new content after state update
+      await refreshConversation(conversation.id);
       setTimeout(scrollToBottom, 100);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to submit response';
@@ -243,7 +254,6 @@ export default function ConversationView({ currentUser, onLogout }: Conversation
     questionPairs.push({ question, response });
   }
 
-  const currentQuestion = questionPairs.find((pair) => !pair.response)?.question;
   const isComplete = conversation.completed;
   const canRegenerate = currentUser.permissions?.includes('regenerate_summary_question') || false;
   const canRegenerateHighlights = currentUser.permissions?.includes('regenerate_highlights') || false;
@@ -379,22 +389,30 @@ export default function ConversationView({ currentUser, onLogout }: Conversation
           <>
             {/* In-progress conversation */}
             <div className="stack" style={{ marginBottom: 24 }}>
-              {questionPairs.map((pair) => (
+              {questionPairs.filter((pair) => pair.response).map((pair) => (
                 <div key={pair.question.id}>
                   <QuestionCard
                     question={pair.question}
-                    isLatest={pair.question.id === currentQuestion?.id}
+                    isLatest={false}
                   />
-                  {pair.response && <ResponseCard response={pair.response} />}
+                  <ResponseCard response={pair.response!} />
                 </div>
               ))}
             </div>
+
+            {/* Carousel for question selection */}
+            {currentQuestionOptions.length > 0 && (
+              <QuestionCarousel
+                questions={currentQuestionOptions}
+                onSelectQuestion={setSelectedQuestion}
+              />
+            )}
 
             {/* Input or Loading Indicator */}
             {submitting ? (
               <LoadingIndicator />
             ) : (
-              currentQuestion && (
+              selectedQuestion && (
                 <div className="stack" style={{ gap: 12 }}>
                   {canRegenerate && (
                     <div className="row" style={{ justifyContent: 'flex-end' }}>
@@ -443,7 +461,7 @@ export default function ConversationView({ currentUser, onLogout }: Conversation
           </button>
 
           {/* Scroll to bottom button - only show for in-progress conversations */}
-          {!isComplete && currentQuestion && (
+          {!isComplete && selectedQuestion && (
             <button
               onClick={scrollToBottom}
               className="fab fab-primary"

@@ -79,7 +79,7 @@ describe('Routes - Response Submission Resilience', () => {
 
         const response = await request(app)
             .post('/api/conversations/1/response')
-            .send({ response: 'My response' });
+            .send({ response: 'My response', selectedQuestion: 'Question 3?' });
 
         expect(response.status).toBe(502);
         expect(response.body.error).toContain('saved');
@@ -125,7 +125,7 @@ describe('Routes - Response Submission Resilience', () => {
 
         const response = await request(app)
             .post('/api/conversations/1/response')
-            .send({ response: 'My response' });
+            .send({ response: 'My response', selectedQuestion: 'Question 3?' });
 
         expect(response.status).toBe(502);
         expect(response.body.error).toContain('saved');
@@ -133,7 +133,7 @@ describe('Routes - Response Submission Resilience', () => {
         expect(openaiService.generateQuestion).not.toHaveBeenCalled();
     });
 
-    it('reuses an already-saved response and returns an existing next question without duplicate writes', async () => {
+    it('returns the saved response immediately when a response already exists, without touching the DB or LLM', async () => {
         const app = createApp();
 
         vi.mocked(conversationService.getConversationById).mockReturnValue({
@@ -173,17 +173,18 @@ describe('Routes - Response Submission Resilience', () => {
 
         const response = await request(app)
             .post('/api/conversations/1/response')
-            .send({ response: 'Saved response' });
+            .send({ response: 'Saved response', selectedQuestion: 'Question 3?' });
 
         expect(response.status).toBe(200);
         expect(response.body.savedResponse.content).toBe('Saved response');
-        expect(response.body.nextQuestion.content).toBe('Question 4?');
+        expect(response.body.isComplete).toBe(false);
+        expect(response.body.nextQuestions).toBeUndefined();
         expect(vi.mocked(conversationService.saveMessage)).not.toHaveBeenCalled();
         expect(vi.mocked(openaiService.generateHighlights)).not.toHaveBeenCalled();
         expect(vi.mocked(openaiService.generateQuestion)).not.toHaveBeenCalled();
     });
 
-    it('reuses an already-saved response to retry generation without creating duplicate responses', async () => {
+    it('returns the saved response immediately when response exists but next questions are not yet in DB', async () => {
         const app = createApp();
 
         vi.mocked(conversationService.getConversationById).mockReturnValue({
@@ -213,37 +214,15 @@ describe('Routes - Response Submission Resilience', () => {
             ],
         } as any);
 
-        vi.mocked(conversationService.getConversationMessages).mockReturnValue([] as any);
-        vi.mocked(openaiService.generateHighlights).mockResolvedValue('Concise highlights');
-        vi.mocked(openaiService.generateQuestion).mockResolvedValue('Question 4?');
-        vi.mocked(conversationService.saveMessage)
-            .mockReturnValueOnce({
-                id: 12,
-                conversationId: 1,
-                type: 'highlight',
-                content: 'Concise highlights',
-                createdAt: new Date(),
-            } as any)
-            .mockReturnValueOnce({
-                id: 13,
-                conversationId: 1,
-                type: 'question',
-                content: 'Question 4?',
-                questionNumber: 4,
-                createdAt: new Date(),
-            } as any);
-
         const response = await request(app)
             .post('/api/conversations/1/response')
-            .send({ response: 'Saved response' });
+            .send({ response: 'Saved response', selectedQuestion: 'Question 3?' });
 
         expect(response.status).toBe(200);
-        expect(response.body.nextQuestion.content).toBe('Question 4?');
-
-        const responseWrites = vi
-            .mocked(conversationService.saveMessage)
-            .mock.calls.filter(([, type]) => type === 'response');
-        expect(responseWrites).toHaveLength(0);
-        expect(conversationService.deleteConversationMessagesByType).toHaveBeenCalledWith(1, 'highlight');
+        expect(response.body.savedResponse.content).toBe('Saved response');
+        expect(response.body.isComplete).toBe(false);
+        expect(vi.mocked(conversationService.saveMessage)).not.toHaveBeenCalled();
+        expect(vi.mocked(openaiService.generateHighlights)).not.toHaveBeenCalled();
+        expect(vi.mocked(openaiService.generateQuestion)).not.toHaveBeenCalled();
     });
 });

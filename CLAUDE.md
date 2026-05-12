@@ -35,6 +35,14 @@ npm run build && npm start
 
 Schema changes: edit `backend/database/schema.sql`, delete `backend/data/10q.db`, restart.
 
+## Testing notes
+
+Run test files from `backend/` or `frontend/` — running `npx vitest run` from the repo root uses the wrong environment config and produces spurious failures.
+
+In frontend tests, `vi.spyOn(window, 'confirm')` throws in jsdom because `confirm` is undefined; use `vi.stubGlobal('confirm', vi.fn().mockReturnValue(true))` instead.
+
+`@testing-library/jest-dom` matcher methods (e.g. `toBeInTheDocument`) show TypeScript errors in the IDE — these are false positives; the matchers register at runtime via the vitest setup file.
+
 ## Architecture
 
 Monorepo with `backend/` (Express + TypeScript + SQLite) and `frontend/` (React + Vite + Tailwind). In dev, Vite proxies `/api/*` to port 3001. In production, the backend serves `frontend/dist` at root.
@@ -49,7 +57,11 @@ Route handlers are thin: auth/validation/response shaping only. Domain policy li
 
 Creating a conversation triggers Q1 generation immediately. Each user response triggers: highlights generation → next question generation (or summary generation if Q10). All three LLM calls pass the full message history. The OpenAI service wraps calls in a circuit breaker (opossum). Q1 may use a `staticQuestion` defined in `config/commands.json` rather than calling the LLM.
 
-Message types stored in the DB: `question`, `response`, `summary`, `highlight`. Highlights are regenerated after every response and stored as the latest `highlight` message; the summary receives the latest highlights content as additional context.
+Multiple question options are generated per step and all persisted to the DB immediately. `openaiService.generateQuestion` always returns `string[]`. Steps with a `staticQuestion` return a single-element array without calling the LLM. When the user submits a response, all stored options for that step are deleted and only the selected question is re-saved, so the conversation history contains exactly one question per step.
+
+The frontend derives carousel options directly from `conversation.messages` — it filters for unanswered question messages and reads the options from the DB rather than from API response payloads.
+
+Message types stored in the DB: `question`, `response`, `summary`, `highlight`. Multiple `question` rows can share a `questionNumber` while options are pending selection. Highlights are regenerated after every response and stored as the latest `highlight` message; the summary receives the latest highlights content as additional context.
 
 ### Configuration
 

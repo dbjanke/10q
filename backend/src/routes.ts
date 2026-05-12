@@ -2,8 +2,9 @@ import { Router, Request, Response } from 'express';
 import * as conversationService from './services/conversation.service.js';
 import * as openaiService from './services/openai.service.js';
 import * as exportService from './services/export.service.js';
+import { getCommand } from './config/commands.js';
 import { CreateConversationRequest, SubmitResponseRequest, Message } from './types.js';
-import { MAX_TITLE_LENGTH, MAX_RESPONSE_LENGTH } from './config/validation.js';
+import { MAX_TITLE_LENGTH, MAX_RESPONSE_LENGTH, NUM_QUESTIONS } from './config/validation.js';
 import { getConversationStore } from './stores/conversation.store.js';
 import { rateLimit } from './middleware/rateLimit.js';
 import { concurrencyLimit } from './middleware/concurrencyLimit.js';
@@ -33,6 +34,20 @@ function getLatestHighlightContent(messages: Message[]): string | undefined {
   const highlights = messages.filter((message) => message.type === 'highlight');
   const latestHighlight = highlights[highlights.length - 1];
   return latestHighlight?.content;
+}
+
+function questionCount(questionNumber: number): number {
+  return getCommand(questionNumber)?.staticQuestion ? 1 : NUM_QUESTIONS;
+}
+
+function persistQuestionOptions(
+  conversationId: number,
+  questionNumber: number,
+  options: string[]
+): Message[] {
+  return options.map((content) =>
+    conversationService.saveMessage(conversationId, 'question', content, questionNumber)
+  );
 }
 
 // Liveness probe
@@ -160,7 +175,7 @@ router.post(
 
       const latestHighlightContent = getLatestHighlightContent(conversation.messages);
 
-      const nextQuestion = await openaiService.generateQuestion(
+      const [nextQuestionContent] = await openaiService.generateQuestion(
         history,
         currentQuestionNumber,
         latestHighlightContent
@@ -170,7 +185,7 @@ router.post(
       const questionMessage = conversationService.saveMessage(
         id,
         'question',
-        nextQuestion,
+        nextQuestionContent,
         currentQuestionNumber
       );
 
@@ -238,24 +253,12 @@ router.post('/conversations', async (req: Request, res: Response) => {
 
     const conversation = conversationService.createConversation(userId, title.trim());
 
-    // Generate first question
-    const firstQuestion = await openaiService.generateQuestion([], 1);
+    const firstQuestions = await openaiService.generateQuestion([], 1, undefined, questionCount(1));
+    persistQuestionOptions(conversation.id, 1, firstQuestions);
 
-    // Save the first question
-    const questionMessage = conversationService.saveMessage(
-      conversation.id,
-      'question',
-      firstQuestion,
-      1
-    );
-
-    // Update conversation progress
     conversationService.updateConversationProgress(conversation.id, 1);
 
-    res.status(201).json({
-      conversation,
-      firstQuestion: questionMessage,
-    });
+    res.status(201).json({ conversation });
   } catch (error) {
     logger.error({ err: error }, 'Error creating conversation');
     res.status(500).json({ error: 'Failed to create conversation' });
@@ -355,7 +358,7 @@ router.patch('/conversations/:id/title', (req: Request, res: Response) => {
   }
 });
 
-// Submit response and get next question
+// Submit response and get next question options
 router.post(
   '/conversations/:id/response',
   responseRateLimit,
@@ -366,7 +369,7 @@ router.post(
     try {
       const userId = req.user!.id;
       const id = parseIdParam(req.params.id);
-      const { response } = req.body as SubmitResponseRequest;
+      const { response, selectedQuestion } = req.body as SubmitResponseRequest;
 
       if (isNaN(id)) {
         return res.status(400).json({ error: 'Invalid conversation ID' });
@@ -374,6 +377,10 @@ router.post(
 
       if (!response || response.trim().length === 0) {
         return res.status(400).json({ error: 'Response is required' });
+      }
+
+      if (!selectedQuestion || selectedQuestion.trim().length === 0) {
+        return res.status(400).json({ error: 'Selected question is required' });
       }
 
       // Enforce maximum response length for security/stability
@@ -396,6 +403,7 @@ router.post(
       const currentQuestionNumber = conversation.currentQuestionNumber;
       const nextQuestionNumber = currentQuestionNumber + 1;
 
+      // Check if response already exists for current question
       const existingResponse = conversation.messages.find(
         (message) =>
           message.type === 'response' && message.questionNumber === currentQuestionNumber
@@ -415,19 +423,14 @@ router.post(
           }
         }
 
-        const existingNextQuestion = conversation.messages.find(
-          (message) =>
-            message.type === 'question' && message.questionNumber === nextQuestionNumber
-        );
-
-        if (existingNextQuestion) {
-          return res.json({
-            savedResponse: responseMessage,
-            nextQuestion: existingNextQuestion,
-            isComplete: false,
-          });
+        if (nextQuestionNumber <= 10) {
+          return res.json({ savedResponse: responseMessage, isComplete: false });
         }
       }
+
+      // Delete any stored options for this step and keep only the selected question.
+      conversationService.deleteQuestionMessage(id, currentQuestionNumber);
+      conversationService.saveMessage(id, 'question', selectedQuestion.trim(), currentQuestionNumber);
 
       // Save user's response
       if (!responseMessage) {
@@ -479,31 +482,21 @@ router.post(
         }
       }
 
-      // Generate next question
+      // Generate and persist next question options.
       try {
         const messages = conversationService.getConversationMessages(id);
-        const nextQuestion = await openaiService.generateQuestion(
+        const nextQuestions = await openaiService.generateQuestion(
           messages,
           nextQuestionNumber,
-          latestHighlightsContent
+          latestHighlightsContent,
+          questionCount(nextQuestionNumber)
         );
 
-        // Save next question
-        const questionMessage = conversationService.saveMessage(
-          id,
-          'question',
-          nextQuestion,
-          nextQuestionNumber
-        );
+        persistQuestionOptions(id, nextQuestionNumber, nextQuestions);
 
-        // Update conversation progress
         conversationService.updateConversationProgress(id, nextQuestionNumber);
 
-        return res.json({
-          savedResponse: responseMessage,
-          nextQuestion: questionMessage,
-          isComplete: false,
-        });
+        return res.json({ savedResponse: responseMessage, isComplete: false });
       } catch (error) {
         logger.error({ err: error, conversationId: id }, 'Question generation failed after saving response');
         return res.status(502).json({

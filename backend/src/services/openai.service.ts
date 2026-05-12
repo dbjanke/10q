@@ -224,7 +224,7 @@ export async function checkOpenAiHealth(): Promise<{
   }
 }
 
-export async function generateQuestion(
+async function generateSingleQuestion(
   conversationHistory: Message[],
   questionNumber: number,
   highlights?: string
@@ -232,11 +232,6 @@ export async function generateQuestion(
   const command = getCommand(questionNumber);
   if (!command) {
     throw new Error(`No command found for question number ${questionNumber}`);
-  }
-
-  // Return static question if defined (avoids API call for Q1)
-  if (command.staticQuestion) {
-    return command.staticQuestion;
   }
 
   const systemPrompts = loadSystemPrompts();
@@ -300,6 +295,28 @@ export async function generateQuestion(
   }
 
   return question;
+}
+
+export async function generateQuestion(
+  conversationHistory: Message[],
+  questionNumber: number,
+  highlights?: string,
+  count: number = 1
+): Promise<string[]> {
+  const command = getCommand(questionNumber);
+  if (!command) {
+    throw new Error(`No command found for question number ${questionNumber}`);
+  }
+
+  if (command.staticQuestion) {
+    return [command.staticQuestion];
+  }
+
+  const promises = Array.from({ length: count }, () =>
+    generateSingleQuestion(conversationHistory, questionNumber, highlights)
+  );
+
+  return Promise.all(promises);
 }
 
 export async function generateHighlights(conversationHistory: Message[]): Promise<string> {

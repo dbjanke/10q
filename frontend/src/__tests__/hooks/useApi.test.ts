@@ -226,12 +226,12 @@ describe('useApi', () => {
     });
 
     describe('submitResponse', () => {
-        it('should submit a response and get next question', async () => {
+        it('should submit a response and get next questions array', async () => {
             (global.fetch as any)
                 .mockResolvedValueOnce(mockFetchSuccess({ csrfToken: 'test-token' }))
                 .mockResolvedValueOnce(mockFetchSuccess(mockResponseSubmissionResult));
 
-            const result = await api.submitResponse(1, 'My thoughtful response');
+            const result = await api.submitResponse(1, 'My thoughtful response', 'What brings you here?');
 
             expect(global.fetch).toHaveBeenNthCalledWith(1, '/api/auth/csrf', {
                 headers: { 'Content-Type': 'application/json' },
@@ -241,13 +241,27 @@ describe('useApi', () => {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': 'test-token' },
                 credentials: 'include',
-                body: JSON.stringify({ response: 'My thoughtful response' }),
+                body: JSON.stringify({ response: 'My thoughtful response', selectedQuestion: 'What brings you here?' }),
             });
 
             expect(result).toEqual(mockResponseSubmissionResult);
             expect(result.savedResponse.type).toBe('response');
-            expect(result.nextQuestion?.type).toBe('question');
+            expect(result.nextQuestions?.[0].type).toBe('question');
             expect(result.isComplete).toBe(false);
+        });
+
+        it('should include selectedQuestion in the request body', async () => {
+            (global.fetch as any)
+                .mockResolvedValueOnce(mockFetchSuccess({ csrfToken: 'test-token' }))
+                .mockResolvedValueOnce(mockFetchSuccess(mockResponseSubmissionResult));
+
+            await api.submitResponse(1, 'My answer', 'The selected question text');
+
+            const callBody = JSON.parse(
+                (global.fetch as any).mock.calls[1][1].body
+            );
+            expect(callBody.selectedQuestion).toBe('The selected question text');
+            expect(callBody.response).toBe('My answer');
         });
 
         it('should handle completion of 10th question', async () => {
@@ -260,10 +274,10 @@ describe('useApi', () => {
                 .mockResolvedValueOnce(mockFetchSuccess({ csrfToken: 'test-token' }))
                 .mockResolvedValueOnce(mockFetchSuccess(completedResult));
 
-            const result = await api.submitResponse(1, 'Final response');
+            const result = await api.submitResponse(1, 'Final response', 'Last question?');
 
             expect(result.isComplete).toBe(true);
-            expect(result.nextQuestion).toBeUndefined();
+            expect(result.nextQuestions).toBeUndefined();
         });
 
         it('should handle submission errors', async () => {
@@ -271,9 +285,62 @@ describe('useApi', () => {
                 .mockResolvedValueOnce(mockFetchSuccess({ csrfToken: 'test-token' }))
                 .mockResolvedValueOnce(mockFetchError('Failed to generate question', 500));
 
-            await expect(api.submitResponse(1, 'Response')).rejects.toThrow(
+            await expect(api.submitResponse(1, 'Response', 'Q?')).rejects.toThrow(
                 'Failed to generate question'
             );
+        });
+    });
+
+    describe('getCurrentUser', () => {
+        it('should fetch the current user', async () => {
+            const mockUser = {
+                id: 1, email: 'test@example.com', name: 'Test User',
+                role: 'user', status: 'active', createdAt: new Date().toISOString(),
+            };
+            (global.fetch as any).mockResolvedValueOnce(mockFetchSuccess({ user: mockUser }));
+
+            const result = await api.getCurrentUser();
+
+            expect(global.fetch).toHaveBeenCalledWith('/api/auth/me', expect.objectContaining({
+                method: 'GET',
+            }));
+            expect(result).toEqual(mockUser);
+        });
+
+        it('should throw when not authenticated', async () => {
+            (global.fetch as any).mockResolvedValueOnce(mockFetchError('Authentication required', 401));
+            await expect(api.getCurrentUser()).rejects.toThrow('Authentication required');
+        });
+    });
+
+    describe('logout', () => {
+        it('should POST to the logout endpoint', async () => {
+            (global.fetch as any)
+                .mockResolvedValueOnce(mockFetchSuccess({ csrfToken: 'test-token' }))
+                .mockResolvedValueOnce(mockFetchNoContent());
+
+            await api.logout();
+
+            expect(global.fetch).toHaveBeenNthCalledWith(2, '/api/auth/logout', expect.objectContaining({
+                method: 'POST',
+                headers: expect.objectContaining({ 'X-CSRF-Token': 'test-token' }),
+            }));
+        });
+    });
+
+    describe('updateConversationTitle', () => {
+        it('should PATCH the conversation title', async () => {
+            (global.fetch as any)
+                .mockResolvedValueOnce(mockFetchSuccess({ csrfToken: 'test-token' }))
+                .mockResolvedValueOnce(mockFetchSuccess({ title: 'New Title' }));
+
+            const result = await api.updateConversationTitle(1, 'New Title');
+
+            expect(global.fetch).toHaveBeenNthCalledWith(2, '/api/conversations/1/title', expect.objectContaining({
+                method: 'PATCH',
+                body: JSON.stringify({ title: 'New Title' }),
+            }));
+            expect(result.title).toBe('New Title');
         });
     });
 
@@ -281,6 +348,131 @@ describe('useApi', () => {
         it('should return correct export URL', () => {
             const url = api.getExportUrl(42);
             expect(url).toBe('/api/conversations/42/export');
+        });
+    });
+
+    describe('admin: users', () => {
+        it('getUsers should fetch all users', async () => {
+            const users = [{ id: 1, email: 'a@b.com', role: 'user', status: 'active', createdAt: new Date().toISOString() }];
+            (global.fetch as any).mockResolvedValueOnce(mockFetchSuccess(users));
+            const result = await api.getUsers();
+            expect(global.fetch).toHaveBeenCalledWith('/api/admin/users', expect.objectContaining({ method: 'GET' }));
+            expect(result).toEqual(users);
+        });
+
+        it('inviteUser should POST to admin users', async () => {
+            const newUser = { id: 2, email: 'new@b.com', role: 'user', status: 'invited', createdAt: new Date().toISOString() };
+            (global.fetch as any)
+                .mockResolvedValueOnce(mockFetchSuccess({ csrfToken: 'test-token' }))
+                .mockResolvedValueOnce(mockFetchSuccess(newUser));
+
+            const result = await api.inviteUser('new@b.com');
+
+            expect(global.fetch).toHaveBeenNthCalledWith(2, '/api/admin/users', expect.objectContaining({
+                method: 'POST',
+                body: JSON.stringify({ email: 'new@b.com', role: 'user' }),
+            }));
+            expect(result).toEqual(newUser);
+        });
+
+        it('inviteUser should pass a custom role', async () => {
+            (global.fetch as any)
+                .mockResolvedValueOnce(mockFetchSuccess({ csrfToken: 'test-token' }))
+                .mockResolvedValueOnce(mockFetchSuccess({ id: 3, email: 'admin@b.com', role: 'admin', status: 'invited', createdAt: new Date().toISOString() }));
+
+            await api.inviteUser('admin@b.com', 'admin');
+
+            const body = JSON.parse((global.fetch as any).mock.calls[1][1].body);
+            expect(body.role).toBe('admin');
+        });
+
+        it('updateUser should PATCH the user', async () => {
+            const updated = { id: 1, email: 'a@b.com', role: 'admin', status: 'active', createdAt: new Date().toISOString() };
+            (global.fetch as any)
+                .mockResolvedValueOnce(mockFetchSuccess({ csrfToken: 'test-token' }))
+                .mockResolvedValueOnce(mockFetchSuccess(updated));
+
+            const result = await api.updateUser(1, { role: 'admin' });
+
+            expect(global.fetch).toHaveBeenNthCalledWith(2, '/api/admin/users/1', expect.objectContaining({
+                method: 'PATCH',
+                body: JSON.stringify({ role: 'admin' }),
+            }));
+            expect(result).toEqual(updated);
+        });
+
+        it('deleteUser should DELETE the user', async () => {
+            (global.fetch as any)
+                .mockResolvedValueOnce(mockFetchSuccess({ csrfToken: 'test-token' }))
+                .mockResolvedValueOnce(mockFetchNoContent());
+
+            await api.deleteUser(1);
+
+            expect(global.fetch).toHaveBeenNthCalledWith(2, '/api/admin/users/1', expect.objectContaining({ method: 'DELETE' }));
+        });
+    });
+
+    describe('admin: permissions', () => {
+        it('getPermissions should fetch permissions array', async () => {
+            const permissions = [{ id: 'read', name: 'Read' }, { id: 'write', name: 'Write' }];
+            (global.fetch as any).mockResolvedValueOnce(mockFetchSuccess({ permissions }));
+
+            const result = await api.getPermissions();
+
+            expect(global.fetch).toHaveBeenCalledWith('/api/admin/permissions', expect.objectContaining({ method: 'GET' }));
+            expect(result).toEqual(permissions);
+        });
+    });
+
+    describe('admin: groups', () => {
+        it('getGroups should fetch all groups', async () => {
+            const groups = [{ id: 1, name: 'Editors', permissions: [] }];
+            (global.fetch as any).mockResolvedValueOnce(mockFetchSuccess(groups));
+
+            const result = await api.getGroups();
+
+            expect(global.fetch).toHaveBeenCalledWith('/api/admin/groups', expect.objectContaining({ method: 'GET' }));
+            expect(result).toEqual(groups);
+        });
+
+        it('createGroup should POST a new group', async () => {
+            const newGroup = { id: 2, name: 'Reviewers', permissions: [] };
+            (global.fetch as any)
+                .mockResolvedValueOnce(mockFetchSuccess({ csrfToken: 'test-token' }))
+                .mockResolvedValueOnce(mockFetchSuccess(newGroup));
+
+            const result = await api.createGroup('Reviewers');
+
+            expect(global.fetch).toHaveBeenNthCalledWith(2, '/api/admin/groups', expect.objectContaining({
+                method: 'POST',
+                body: JSON.stringify({ name: 'Reviewers' }),
+            }));
+            expect(result).toEqual(newGroup);
+        });
+
+        it('updateGroup should PATCH the group', async () => {
+            const updated = { id: 1, name: 'Senior Editors', permissions: ['read'] };
+            (global.fetch as any)
+                .mockResolvedValueOnce(mockFetchSuccess({ csrfToken: 'test-token' }))
+                .mockResolvedValueOnce(mockFetchSuccess(updated));
+
+            const result = await api.updateGroup(1, { name: 'Senior Editors' });
+
+            expect(global.fetch).toHaveBeenNthCalledWith(2, '/api/admin/groups/1', expect.objectContaining({
+                method: 'PATCH',
+                body: JSON.stringify({ name: 'Senior Editors' }),
+            }));
+            expect(result).toEqual(updated);
+        });
+
+        it('deleteGroup should DELETE the group', async () => {
+            (global.fetch as any)
+                .mockResolvedValueOnce(mockFetchSuccess({ csrfToken: 'test-token' }))
+                .mockResolvedValueOnce(mockFetchNoContent());
+
+            await api.deleteGroup(1);
+
+            expect(global.fetch).toHaveBeenNthCalledWith(2, '/api/admin/groups/1', expect.objectContaining({ method: 'DELETE' }));
         });
     });
 

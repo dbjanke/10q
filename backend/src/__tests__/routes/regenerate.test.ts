@@ -143,7 +143,7 @@ describe('Routes - Regenerate', () => {
             ],
         } as any);
 
-        vi.mocked(openaiService.generateQuestion).mockResolvedValue('New question');
+        vi.mocked(openaiService.generateQuestion).mockResolvedValue(['New question']);
         vi.mocked(conversationService.saveMessage).mockReturnValue({
             id: 2,
             conversationId: 1,

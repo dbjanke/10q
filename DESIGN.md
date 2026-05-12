@@ -20,7 +20,7 @@ This framing establishes the tone: the user should bring something live, not reh
 
 ### The Ten Questions
 
-Questions are generated one at a time. Each question is a single, open-ended sentence. After the user responds, the next question is generated using the full conversation so far as context. The questions are not generic — they press on the specific claims, framings, and commitments the user has made.
+For each step, the system generates several question options and presents them to the user. Each option is a single, open-ended sentence. The user selects one option before responding; the selected question becomes the question of record for that step. The options are not generic — they press on the specific claims, framings, and commitments the user has made. The next set of options is generated using the full conversation so far as context.
 
 The ten questions follow a fixed progression. Each stage has a distinct purpose:
 
@@ -57,7 +57,7 @@ Users see a list of all their past conversations with title, date, and completio
 
 ### Conversation View
 
-The active session displays the questions and responses in sequence. The current question is presented one at a time; the user cannot advance without responding. Completed conversations are read-only.
+The active session displays the questions and responses in sequence. For the current step, the system presents multiple question options; the user selects one and then responds. The user cannot advance without both selecting a question and submitting a response. Completed conversations are read-only.
 
 ### Export
 
@@ -69,7 +69,7 @@ A completed conversation can be exported as a Markdown file containing the full 
 
 **Conversation** — A single session. Has a user-provided title (editable), a current question index (1–10), a completion flag, and belongs to a user.
 
-**Message** — An individual unit of content within a conversation. Types include: question (AI-generated), response (user-authored), summary (AI-generated at completion), and key insight (AI-generated after each response; only the latest set is retained).
+**Message** — An individual unit of content within a conversation. Types include: question (AI-generated), response (user-authored), summary (AI-generated at completion), and key insight (AI-generated after each response; only the latest set is retained). Multiple question messages can share the same step index while options are pending selection; once the user submits a response, all options for that step are discarded and only the selected question is retained.
 
 **User** — An authenticated account. Has an email address and a role (user or admin).
 

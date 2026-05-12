@@ -62,7 +62,7 @@ export const mockCreateConversationResponse = {
 
 export const mockResponseSubmissionResult = {
     savedResponse: mockMessages[1],
-    nextQuestion: mockMessages[2],
+    nextQuestions: [mockMessages[2]],
     isComplete: false,
 };
 

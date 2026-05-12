@@ -62,6 +62,7 @@ export interface CreateConversationRequest {
 
 export interface SubmitResponseRequest {
   response: string;
+  selectedQuestion: string; // The question content that was selected from the carousel
 }
 
 export interface QuestionResponse {
@@ -72,7 +73,6 @@ export interface QuestionResponse {
 
 export interface ResponseSubmissionResult {
   savedResponse: Message;
-  nextQuestion?: Message;
-  summary?: string;
   isComplete: boolean;
+  summary?: string;
 }

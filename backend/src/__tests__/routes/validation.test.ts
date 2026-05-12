@@ -80,7 +80,7 @@ describe('Routes - Validation', () => {
                 currentQuestionNumber: 0,
             });
 
-            vi.mocked(openaiService.generateQuestion).mockResolvedValue('First question?');
+            vi.mocked(openaiService.generateQuestion).mockResolvedValue(['First question?']);
 
             vi.mocked(conversationService.saveMessage).mockReturnValue({
                 id: 1,
@@ -112,7 +112,7 @@ describe('Routes - Validation', () => {
                 currentQuestionNumber: 0,
             });
 
-            vi.mocked(openaiService.generateQuestion).mockResolvedValue('First question?');
+            vi.mocked(openaiService.generateQuestion).mockResolvedValue(['First question?']);
 
             vi.mocked(conversationService.saveMessage).mockReturnValue({
                 id: 1,
@@ -170,7 +170,7 @@ describe('Routes - Validation', () => {
 
             const response = await request(app)
                 .post('/api/conversations/1/response')
-                .send({ response: tooLongResponse });
+                .send({ response: tooLongResponse, selectedQuestion: 'What is this question?' });
 
             expect(response.status).toBe(400);
             expect(response.body.error).toContain('too long');
@@ -206,23 +206,15 @@ describe('Routes - Validation', () => {
                     type: 'highlight',
                     content: 'Highlights',
                     createdAt: new Date().toISOString(),
-                } as any)
-                .mockReturnValueOnce({
-                    id: 3,
-                    conversationId: 1,
-                    type: 'question',
-                    content: 'Next question?',
-                    questionNumber: 6,
-                    createdAt: new Date().toISOString(),
                 } as any);
 
-            vi.mocked(openaiService.generateQuestion).mockResolvedValue('Next question?');
+            vi.mocked(openaiService.generateQuestion).mockResolvedValue(['Next question 1?', 'Next question 2?', 'Next question 3?']);
 
             vi.mocked(conversationService.updateConversationProgress).mockReturnValue(undefined);
 
             const response = await request(app)
                 .post('/api/conversations/1/response')
-                .send({ response: exactLengthResponse });
+                .send({ response: exactLengthResponse, selectedQuestion: 'What is this?' });
 
             expect(response.status).toBe(200);
         });
@@ -256,23 +248,15 @@ describe('Routes - Validation', () => {
                     type: 'highlight',
                     content: 'Highlights',
                     createdAt: new Date().toISOString(),
-                } as any)
-                .mockReturnValueOnce({
-                    id: 3,
-                    conversationId: 1,
-                    type: 'question',
-                    content: 'Next question?',
-                    questionNumber: 6,
-                    createdAt: new Date().toISOString(),
                 } as any);
 
-            vi.mocked(openaiService.generateQuestion).mockResolvedValue('Next question?');
+            vi.mocked(openaiService.generateQuestion).mockResolvedValue(['Next question 1?', 'Next question 2?', 'Next question 3?']);
 
             vi.mocked(conversationService.updateConversationProgress).mockReturnValue(undefined);
 
             const response = await request(app)
                 .post('/api/conversations/1/response')
-                .send({ response: validResponse });
+                .send({ response: validResponse, selectedQuestion: 'What is this?' });
 
             expect(response.status).toBe(200);
         });

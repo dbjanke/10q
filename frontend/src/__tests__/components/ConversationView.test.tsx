@@ -15,7 +15,7 @@ vi.mock('../../components/QuestionCard', () => ({
 
 vi.mock('../../components/ResponseInput', () => ({
     default: ({ onSubmit, disabled }: any) => (
-        <button onClick={() => onSubmit('Test response')} disabled={disabled} data-testid="submit-btn">
+        <button onClick={() => Promise.resolve(onSubmit('Test response')).catch(() => {})} disabled={disabled} data-testid="submit-btn">
             Submit
         </button>
     ),
@@ -34,6 +34,12 @@ vi.mock('../../components/Summary', () => ({
 
 vi.mock('../../components/LoadingIndicator', () => ({
     default: () => <div data-testid="loading-indicator">Loading...</div>,
+}));
+
+vi.mock('../../components/QuestionCarousel', () => ({
+    default: ({ questions }: any) => (
+        <div data-testid="question-carousel">{questions[0]?.content}</div>
+    ),
 }));
 
 // Mock useParams
@@ -146,7 +152,7 @@ describe('ConversationView - Completion Flow', () => {
         expect(api.getConversation).toHaveBeenCalledTimes(1);
 
         // Submit the final response
-        const submitButton = screen.getByTestId('submit-btn');
+        const submitButton = await screen.findByTestId('submit-btn');
         await user.click(submitButton);
 
         // Wait for the conversation to reload
@@ -161,7 +167,7 @@ describe('ConversationView - Completion Flow', () => {
         });
     });
 
-    it('should not reload conversation for non-final responses', async () => {
+    it('reloads the conversation after submitting a non-final response', async () => {
         const user = userEvent.setup();
 
         const inProgressConversation = {
@@ -183,7 +189,33 @@ describe('ConversationView - Completion Flow', () => {
             ],
         };
 
-        vi.mocked(api.getConversation).mockResolvedValue(inProgressConversation);
+        const refreshedConversation = {
+            ...inProgressConversation,
+            currentQuestionNumber: 6,
+            messages: [
+                ...inProgressConversation.messages,
+                {
+                    id: 2,
+                    conversationId: 1,
+                    type: 'response',
+                    content: 'Response 5',
+                    questionNumber: 5,
+                    createdAt: new Date().toISOString(),
+                },
+                {
+                    id: 3,
+                    conversationId: 1,
+                    type: 'question',
+                    content: 'Question 6?',
+                    questionNumber: 6,
+                    createdAt: new Date().toISOString(),
+                },
+            ],
+        };
+
+        vi.mocked(api.getConversation)
+            .mockResolvedValueOnce(inProgressConversation as any)
+            .mockResolvedValueOnce(refreshedConversation as any);
 
         vi.mocked(api.submitResponse).mockResolvedValue({
             savedResponse: {
@@ -192,14 +224,6 @@ describe('ConversationView - Completion Flow', () => {
                 type: 'response',
                 content: 'Response 5',
                 questionNumber: 5,
-                createdAt: new Date().toISOString(),
-            },
-            nextQuestion: {
-                id: 3,
-                conversationId: 1,
-                type: 'question',
-                content: 'Question 6?',
-                questionNumber: 6,
                 createdAt: new Date().toISOString(),
             },
             isComplete: false,
@@ -215,19 +239,15 @@ describe('ConversationView - Completion Flow', () => {
             expect(screen.getByText('Test Conversation')).toBeInTheDocument();
         });
 
-        expect(api.getConversation).toHaveBeenCalledTimes(1);
-
-        // Submit a non-final response
-        const submitButton = screen.getByTestId('submit-btn');
+        const submitButton = await screen.findByTestId('submit-btn');
         await user.click(submitButton);
 
-        // Wait a bit to ensure no additional reload happens
         await waitFor(() => {
-            expect(api.submitResponse).toHaveBeenCalled();
+            expect(api.getConversation).toHaveBeenCalledTimes(2);
         });
 
-        // Should still only have 1 call to getConversation (no reload)
-        expect(api.getConversation).toHaveBeenCalledTimes(1);
+        // After reload the next question carousel is shown
+        expect(await screen.findByTestId('submit-btn')).toBeInTheDocument();
     });
 
     it('should show loading indicator while submitting response', async () => {
@@ -252,14 +272,35 @@ describe('ConversationView - Completion Flow', () => {
             ],
         };
 
-        vi.mocked(api.getConversation).mockResolvedValue(inProgressConversation);
+        const refreshedConversation = {
+            ...inProgressConversation,
+            currentQuestionNumber: 6,
+            messages: [
+                ...inProgressConversation.messages,
+                {
+                    id: 2,
+                    conversationId: 1,
+                    type: 'response',
+                    content: 'Response 5',
+                    questionNumber: 5,
+                    createdAt: new Date().toISOString(),
+                },
+                {
+                    id: 3,
+                    conversationId: 1,
+                    type: 'question',
+                    content: 'Question 6?',
+                    questionNumber: 6,
+                    createdAt: new Date().toISOString(),
+                },
+            ],
+        };
 
-        // Mock a slow API response to test loading state
-        let resolveSubmit: any;
-        const submitPromise = new Promise((resolve) => {
-            resolveSubmit = resolve;
-        });
+        vi.mocked(api.getConversation).mockResolvedValue(inProgressConversation as any);
 
+        // Mock a slow submit — the loading indicator is visible while this is pending
+        let resolveSubmit: (value: any) => void;
+        const submitPromise = new Promise((resolve) => { resolveSubmit = resolve; });
         vi.mocked(api.submitResponse).mockReturnValue(submitPromise as any);
 
         render(
@@ -272,46 +313,23 @@ describe('ConversationView - Completion Flow', () => {
             expect(screen.getByText('Test Conversation')).toBeInTheDocument();
         });
 
-        // Initially, loading indicator should not be visible
+        const submitButton = await screen.findByTestId('submit-btn');
         expect(screen.queryByTestId('loading-indicator')).not.toBeInTheDocument();
-        expect(screen.getByTestId('submit-btn')).toBeInTheDocument();
-
-        // Click submit button
-        const submitButton = screen.getByTestId('submit-btn');
         await user.click(submitButton);
 
-        // Loading indicator should appear, submit button should disappear
         await waitFor(() => {
             expect(screen.getByTestId('loading-indicator')).toBeInTheDocument();
         });
         expect(screen.queryByTestId('submit-btn')).not.toBeInTheDocument();
 
-        // Resolve the API call
-        resolveSubmit({
-            savedResponse: {
-                id: 2,
-                conversationId: 1,
-                type: 'response',
-                content: 'Response 5',
-                questionNumber: 5,
-                createdAt: new Date().toISOString(),
-            },
-            nextQuestion: {
-                id: 3,
-                conversationId: 1,
-                type: 'question',
-                content: 'Question 6?',
-                questionNumber: 6,
-                createdAt: new Date().toISOString(),
-            },
-            isComplete: false,
-        });
+        // Resolve submit, then mock the refresh getConversation call
+        vi.mocked(api.getConversation).mockResolvedValueOnce(refreshedConversation as any);
+        resolveSubmit!({ savedResponse: { id: 2, conversationId: 1, type: 'response', content: 'Response 5', questionNumber: 5, createdAt: new Date().toISOString() }, isComplete: false });
 
-        // Loading indicator should disappear, submit button should reappear
         await waitFor(() => {
             expect(screen.queryByTestId('loading-indicator')).not.toBeInTheDocument();
         });
-        expect(screen.getByTestId('submit-btn')).toBeInTheDocument();
+        expect(await screen.findByTestId('submit-btn')).toBeInTheDocument();
     });
 
     it('allows regenerating summary with permission', async () => {
@@ -419,7 +437,7 @@ describe('ConversationView - Completion Flow', () => {
             expect(screen.getByText('Question 2 of 10')).toBeInTheDocument();
         });
 
-        const regenButton = screen.getByRole('button', { name: 'Regenerate question' });
+        const regenButton = await screen.findByRole('button', { name: 'Regenerate question' });
         await user.click(regenButton);
 
         await waitFor(() => {
@@ -481,7 +499,7 @@ describe('ConversationView - Completion Flow', () => {
             expect(screen.getByText('Question 2 of 10')).toBeInTheDocument();
         });
 
-        const toggle = screen.getByText('Key Insights');
+        const toggle = await screen.findByText('Key Insights');
         await user.click(toggle);
 
         await waitFor(() => {
@@ -537,7 +555,7 @@ describe('ConversationView - Completion Flow', () => {
             expect(screen.getByText('Question 2 of 10')).toBeInTheDocument();
         });
 
-        const toggle = screen.getByText('Key Insights');
+        const toggle = await screen.findByText('Key Insights');
         await user.click(toggle);
 
         expect(screen.queryByRole('button', { name: 'Regenerate key insights' })).not.toBeInTheDocument();
@@ -710,5 +728,61 @@ describe('ConversationView - Completion Flow', () => {
 
         expect(api.updateConversationTitle).not.toHaveBeenCalled();
         expect(screen.getByText('My Conversation')).toBeInTheDocument();
+    });
+
+    it('shows "Conversation not found" with a return button when loading fails', async () => {
+        vi.mocked(api.getConversation).mockRejectedValue(new Error('Network error'));
+
+        render(
+            <BrowserRouter>
+                <ConversationView currentUser={currentUser} onLogout={vi.fn()} />
+            </BrowserRouter>
+        );
+
+        // When getConversation throws, conversation stays null and the not-found UI renders
+        await waitFor(() => {
+            expect(screen.getByText('Conversation not found')).toBeInTheDocument();
+        });
+
+        expect(screen.getByRole('button', { name: 'Return to Dashboard' })).toBeInTheDocument();
+    });
+
+    it('shows an inline error when response submission fails', async () => {
+        const user = userEvent.setup();
+
+        const inProgressConversation = {
+            id: 1,
+            title: 'Test',
+            summary: null,
+            createdAt: new Date().toISOString(),
+            completed: false,
+            currentQuestionNumber: 1,
+            messages: [
+                {
+                    id: 1,
+                    conversationId: 1,
+                    type: 'question',
+                    content: 'Question 1?',
+                    questionNumber: 1,
+                    createdAt: new Date().toISOString(),
+                },
+            ],
+        };
+
+        vi.mocked(api.getConversation).mockResolvedValue(inProgressConversation as any);
+        vi.mocked(api.submitResponse).mockRejectedValue(new Error('Failed to generate question'));
+
+        render(
+            <BrowserRouter>
+                <ConversationView currentUser={currentUser} onLogout={vi.fn()} />
+            </BrowserRouter>
+        );
+
+        const submitButton = await screen.findByTestId('submit-btn');
+        await user.click(submitButton);
+
+        await waitFor(() => {
+            expect(screen.getByText('Failed to generate question')).toBeInTheDocument();
+        });
     });
 });
