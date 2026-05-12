@@ -94,3 +94,15 @@ export function getGoogleConfig(): {
         callbackUrl: requireEnv('GOOGLE_CALLBACK_URL'),
     };
 }
+
+export function getResponseRateLimitWindowMs(): number {
+    return Number(process.env.RESPONSE_RATE_LIMIT_WINDOW_MS ?? 60000);
+}
+
+export function getResponseRateLimitMax(): number {
+    return Number(process.env.RESPONSE_RATE_LIMIT_MAX ?? 30);
+}
+
+export function getMaxConcurrentSubmissions(): number {
+    return Number(process.env.MAX_CONCURRENT_SUBMISSIONS ?? 5);
+}

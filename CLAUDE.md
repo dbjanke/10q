@@ -43,6 +43,8 @@ In frontend tests, `vi.spyOn(window, 'confirm')` throws in jsdom because `confir
 
 `@testing-library/jest-dom` matcher methods (e.g. `toBeInTheDocument`) show TypeScript errors in the IDE — these are false positives; the matchers register at runtime via the vitest setup file.
 
+`frontend/tsconfig.json` sets `"types": []` to prevent backend devDependencies (e.g. `@types/supertest`) from leaking into the frontend build via the shared root `node_modules`. Do not remove this; all frontend types are resolved through explicit imports.
+
 ## Architecture
 
 Monorepo with `backend/` (Express + TypeScript + SQLite) and `frontend/` (React + Vite + Tailwind). In dev, Vite proxies `/api/*` to port 3001. In production, the backend serves `frontend/dist` at root.

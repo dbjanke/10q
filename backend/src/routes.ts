@@ -2,33 +2,34 @@ import { Router, Request, Response } from 'express';
 import * as conversationService from './services/conversation.service.js';
 import * as openaiService from './services/openai.service.js';
 import * as exportService from './services/export.service.js';
-import { getCommand } from './config/commands.js';
+import * as questionService from './services/question.service.js';
+import { loadCommands } from './config/commands.js';
 import { CreateConversationRequest, SubmitResponseRequest, Message } from './types.js';
-import { MAX_TITLE_LENGTH, MAX_RESPONSE_LENGTH, NUM_QUESTIONS } from './config/validation.js';
+import { MAX_TITLE_LENGTH, MAX_RESPONSE_LENGTH } from './config/validation.js';
 import { getConversationStore } from './stores/conversation.store.js';
 import { rateLimit } from './middleware/rateLimit.js';
 import { concurrencyLimit } from './middleware/concurrencyLimit.js';
 import { requireAuth } from './middleware/auth.js';
 import { requirePermission } from './middleware/permissions.js';
+import { REGENERATE_PERMISSION, REGENERATE_HIGHLIGHTS_PERMISSION } from './config/permissions.js';
 import { parseIdParam } from './utils/params.js';
 import { logger } from './utils/logger.js';
+import {
+  getResponseRateLimitWindowMs,
+  getResponseRateLimitMax,
+  getMaxConcurrentSubmissions,
+} from './config/env.js';
 
 const router = Router();
 
-const RESPONSE_RATE_LIMIT_WINDOW_MS = Number(process.env.RESPONSE_RATE_LIMIT_WINDOW_MS || 60000);
-const RESPONSE_RATE_LIMIT_MAX = Number(process.env.RESPONSE_RATE_LIMIT_MAX || 30);
-const MAX_CONCURRENT_SUBMISSIONS = Number(process.env.MAX_CONCURRENT_SUBMISSIONS || 5);
-
 const responseRateLimit = rateLimit({
-  windowMs: RESPONSE_RATE_LIMIT_WINDOW_MS,
-  max: RESPONSE_RATE_LIMIT_MAX,
+  windowMs: getResponseRateLimitWindowMs(),
+  max: getResponseRateLimitMax(),
 });
 
 const responseConcurrencyLimit = concurrencyLimit({
-  max: MAX_CONCURRENT_SUBMISSIONS,
+  max: getMaxConcurrentSubmissions(),
 });
-
-const REGENERATE_PERMISSION = 'regenerate_summary_question' as const;
 
 function getLatestHighlightContent(messages: Message[]): string | undefined {
   const highlights = messages.filter((message) => message.type === 'highlight');
@@ -36,35 +37,14 @@ function getLatestHighlightContent(messages: Message[]): string | undefined {
   return latestHighlight?.content;
 }
 
-function questionCount(questionNumber: number): number {
-  return getCommand(questionNumber)?.staticQuestion ? 1 : NUM_QUESTIONS;
-}
-
-function persistQuestionOptions(
-  conversationId: number,
-  questionNumber: number,
-  options: string[]
-): void {
-  options.forEach((content) =>
-    conversationService.saveMessage(conversationId, 'question', content, questionNumber)
-  );
-}
-
-async function generateAndPersistQuestionOptions(
-  conversationId: number,
-  questionNumber: number,
-  history: Message[],
-  highlights?: string
-): Promise<void> {
-  const questions = await openaiService.generateQuestion(
-    history,
-    questionNumber,
-    highlights,
-    questionCount(questionNumber)
-  );
-  conversationService.deleteQuestionMessage(conversationId, questionNumber);
-  persistQuestionOptions(conversationId, questionNumber, questions);
-  conversationService.updateConversationProgress(conversationId, questionNumber);
+function validateTitle(title: unknown): { error: string } | { value: string } {
+  if (!title || typeof title !== 'string' || title.trim().length === 0) {
+    return { error: 'Title is required' };
+  }
+  if (title.length > MAX_TITLE_LENGTH) {
+    return { error: `Title too long. Maximum length is ${MAX_TITLE_LENGTH} characters.` };
+  }
+  return { value: title.trim() };
 }
 
 // Liveness probe
@@ -192,7 +172,7 @@ router.post(
 
       const latestHighlightContent = getLatestHighlightContent(conversation.messages);
 
-      await generateAndPersistQuestionOptions(id, currentQuestionNumber, history, latestHighlightContent);
+      await questionService.generateAndPersistQuestionOptions(id, currentQuestionNumber, history, latestHighlightContent);
 
       return res.json({});
     } catch (error) {
@@ -204,7 +184,7 @@ router.post(
 
 router.post(
   '/conversations/:id/regenerate-highlights',
-  requirePermission('regenerate_highlights'),
+  requirePermission(REGENERATE_HIGHLIGHTS_PERMISSION),
   async (req: Request, res: Response) => {
     try {
       const userId = req.user!.id;
@@ -243,20 +223,14 @@ router.post('/conversations', async (req: Request, res: Response) => {
     const userId = req.user!.id;
     const { title } = req.body as CreateConversationRequest;
 
-    if (!title || title.trim().length === 0) {
-      return res.status(400).json({ error: 'Title is required' });
+    const titleResult = validateTitle(title);
+    if ('error' in titleResult) {
+      return res.status(400).json({ error: titleResult.error });
     }
 
-    // Enforce maximum title length
-    if (title.length > MAX_TITLE_LENGTH) {
-      return res.status(400).json({
-        error: `Title too long. Maximum length is ${MAX_TITLE_LENGTH} characters.`
-      });
-    }
+    const conversation = conversationService.createConversation(userId, titleResult.value);
 
-    const conversation = conversationService.createConversation(userId, title.trim());
-
-    await generateAndPersistQuestionOptions(conversation.id, 1, []);
+    await questionService.generateAndPersistQuestionOptions(conversation.id, 1, []);
 
     res.status(201).json({ conversation });
   } catch (error) {
@@ -332,16 +306,9 @@ router.patch('/conversations/:id/title', (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Invalid conversation ID' });
     }
 
-    const { title } = req.body as { title: string };
-
-    if (!title || title.trim().length === 0) {
-      return res.status(400).json({ error: 'Title is required' });
-    }
-
-    if (title.length > MAX_TITLE_LENGTH) {
-      return res.status(400).json({
-        error: `Title too long. Maximum length is ${MAX_TITLE_LENGTH} characters.`,
-      });
+    const titleResult = validateTitle(req.body.title);
+    if ('error' in titleResult) {
+      return res.status(400).json({ error: titleResult.error });
     }
 
     const conversation = conversationService.getConversationById(userId, id);
@@ -349,9 +316,9 @@ router.patch('/conversations/:id/title', (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Conversation not found' });
     }
 
-    conversationService.updateConversationTitle(id, title.trim());
+    conversationService.updateConversationTitle(id, titleResult.value);
 
-    return res.json({ title: title.trim() });
+    return res.json({ title: titleResult.value });
   } catch (error) {
     logger.error({ err: error }, 'Error updating conversation title');
     return res.status(500).json({ error: 'Failed to update title' });
@@ -383,7 +350,6 @@ router.post(
         return res.status(400).json({ error: 'Selected question is required' });
       }
 
-      // Enforce maximum response length for security/stability
       if (response.length > MAX_RESPONSE_LENGTH) {
         return res.status(400).json({
           error: `Response too long. Maximum length is ${MAX_RESPONSE_LENGTH} characters.`
@@ -400,6 +366,7 @@ router.post(
         return res.status(400).json({ error: 'Conversation already completed' });
       }
 
+      const totalQuestions = loadCommands().length;
       const currentQuestionNumber = conversation.currentQuestionNumber;
       const nextQuestionNumber = currentQuestionNumber + 1;
 
@@ -423,7 +390,7 @@ router.post(
           }
         }
 
-        if (nextQuestionNumber <= 10) {
+        if (nextQuestionNumber <= totalQuestions) {
           return res.json({ savedResponse: responseMessage, isComplete: false });
         }
       }
@@ -457,14 +424,12 @@ router.post(
         });
       }
 
-      // Check if we've completed all 10 questions
-      if (currentQuestionNumber >= 10) {
+      // Check if we've completed all questions
+      if (currentQuestionNumber >= totalQuestions) {
         try {
-          // Generate summary
           const messages = conversationService.getConversationMessages(id);
           const summary = await openaiService.generateSummary(messages, latestHighlightsContent);
 
-          // Save summary
           conversationService.saveMessage(id, 'summary', summary);
           conversationService.updateConversationSummary(id, summary);
 
@@ -485,7 +450,7 @@ router.post(
       // Generate and persist next question options.
       try {
         const messages = conversationService.getConversationMessages(id);
-        await generateAndPersistQuestionOptions(id, nextQuestionNumber, messages, latestHighlightsContent);
+        await questionService.generateAndPersistQuestionOptions(id, nextQuestionNumber, messages, latestHighlightsContent);
 
         return res.json({ savedResponse: responseMessage, isComplete: false });
       } catch (error) {

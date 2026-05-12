@@ -8,10 +8,12 @@ const __dirname = dirname(__filename);
 
 let commands: Command[] | null = null;
 let highlightsPrompt: string | null = null;
+let numOptions: number | null = null;
 
 interface CommandsConfig {
   commands: Command[];
   highlightsPrompt: string;
+  numOptions: number;
 }
 
 function loadCommandConfig(): CommandsConfig {
@@ -29,7 +31,20 @@ export function loadCommands(): Command[] {
 
   commands = parsed.commands;
   highlightsPrompt = parsed.highlightsPrompt;
+  numOptions = parsed.numOptions;
   return commands!;
+}
+
+export function getNumOptions(): number {
+  if (numOptions !== null) {
+    return numOptions;
+  }
+
+  const parsed = loadCommandConfig();
+  commands = parsed.commands;
+  highlightsPrompt = parsed.highlightsPrompt;
+  numOptions = parsed.numOptions;
+  return numOptions;
 }
 
 export function getHighlightsPrompt(): string {

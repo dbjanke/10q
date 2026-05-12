@@ -1,5 +1,18 @@
 import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'fs';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
 import { MAX_TITLE_LENGTH, MAX_RESPONSE_LENGTH, MAX_GROUP_NAME_LENGTH } from '../../config/validation.js';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+
+describe('Validation Constants sync', () => {
+    it('frontend and backend validation.ts are identical', () => {
+        const backendFile = readFileSync(join(__dirname, '../../config/validation.ts'), 'utf-8');
+        const frontendFile = readFileSync(join(__dirname, '../../../../frontend/src/config/validation.ts'), 'utf-8');
+        expect(frontendFile).toBe(backendFile);
+    });
+});
 
 describe('Validation Constants', () => {
     describe('MAX_TITLE_LENGTH', () => {
