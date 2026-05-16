@@ -1,6 +1,6 @@
 import passport from 'passport';
 import { Strategy as GoogleStrategy, VerifyCallback, Profile } from 'passport-google-oauth20';
-import { handleGoogleLogin } from '../services/auth.service.js';
+import { handleOAuthLogin } from '../services/auth.service.js';
 import { getUserStore } from '../stores/user.store.js';
 import { User } from '../types.js';
 import { getGoogleConfig } from '../config/env.js';
@@ -39,7 +39,15 @@ export function configurePassport(): void {
                 done: VerifyCallback
             ) => {
                 try {
-                    const user = handleGoogleLogin(profile);
+                    const email = profile.emails?.[0]?.value;
+                    if (!email) {
+                        return done(null, false, { message: 'not_allowed' });
+                    }
+                    const user = handleOAuthLogin({
+                        email,
+                        name: profile.displayName || undefined,
+                        avatarUrl: profile.photos?.[0]?.value || undefined,
+                    });
                     if (!user) {
                         return done(null, false, { message: 'not_allowed' });
                     }

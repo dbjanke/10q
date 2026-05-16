@@ -1,18 +1,21 @@
-import { Profile } from 'passport-google-oauth20';
 import { User } from '../types.js';
 import { getUserStore } from '../stores/user.store.js';
 import { logger } from '../utils/logger.js';
 
-export function handleGoogleLogin(profile: Profile): User | null {
-    const rawEmail = profile.emails?.[0]?.value;
-    const email = rawEmail?.trim().toLowerCase();
+export interface OAuthProfile {
+    email: string;
+    name?: string;
+    avatarUrl?: string;
+}
+
+export function handleOAuthLogin(profile: OAuthProfile): User | null {
+    const email = profile.email.trim().toLowerCase();
     if (!email) {
-        logger.warn('Google profile missing email address');
+        logger.warn('OAuth profile missing email address');
         return null;
     }
 
-    const name = profile.displayName || undefined;
-    const avatarUrl = profile.photos?.[0]?.value || undefined;
+    const { name, avatarUrl } = profile;
     const userStore = getUserStore();
 
     const existing = userStore.getUserByEmail(email);
