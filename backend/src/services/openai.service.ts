@@ -3,22 +3,22 @@ import CircuitBreaker from 'opossum';
 import { Message } from '../types.js';
 import { getCommand, getInsightsPrompt } from '../config/commands.js';
 import { loadSystemPrompts } from '../config/system-prompt.js';
+import { loadLlmConfig } from '../config/llm.js';
+import {
+  isLlmConfigured,
+  getLlmApiKey,
+  getLlmModel,
+  getLlmTimeoutMs,
+  getLlmMaxRetries,
+  getLlmCircuitTimeoutMs,
+  getLlmCircuitErrorThreshold,
+  getLlmCircuitVolumeThreshold,
+} from '../config/env.js';
 import { logger } from '../utils/logger.js';
 import { updateCircuitBreakerMetric } from '../metrics.js';
 
 let openaiClient: OpenAI | null = null;
 let circuitBreaker: CircuitBreaker | null = null;
-
-const OPENAI_TIMEOUT_MS = Number(process.env.OPENAI_TIMEOUT_MS || 15000);
-const OPENAI_MAX_RETRIES = Number(process.env.OPENAI_MAX_RETRIES || 2);
-const CIRCUIT_BREAKER_TIMEOUT = Number(process.env.OPENAI_CIRCUIT_TIMEOUT || 60000);
-const CIRCUIT_BREAKER_ERROR_THRESHOLD = Number(process.env.OPENAI_CIRCUIT_ERROR_THRESHOLD || 50);
-const CIRCUIT_BREAKER_VOLUME_THRESHOLD = Number(process.env.OPENAI_CIRCUIT_VOLUME_THRESHOLD || 10);
-
-const RESPONSE_TEMPERATURE = 0.7;
-const QUESTION_MAX_TOKENS = 150;
-const SUMMARY_MAX_TOKENS = 500;
-const KEY_INSIGHTS_MAX_TOKENS = 300;
 
 function buildDiscussionText(conversationHistory: Message[]): string {
   let conversationText = '';
@@ -93,13 +93,10 @@ function classifyError(error: unknown): ErrorType {
 
 function getOpenAIClient(): OpenAI {
   if (!openaiClient) {
-    if (!process.env.OPENAI_API_KEY) {
-      throw new Error('OPENAI_API_KEY environment variable is not set');
-    }
     openaiClient = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
-      maxRetries: OPENAI_MAX_RETRIES,
-      timeout: OPENAI_TIMEOUT_MS,
+      apiKey: getLlmApiKey(),
+      maxRetries: getLlmMaxRetries(),
+      timeout: getLlmTimeoutMs(),
     });
   }
   return openaiClient;
@@ -107,11 +104,12 @@ function getOpenAIClient(): OpenAI {
 
 function getCircuitBreaker(): CircuitBreaker {
   if (!circuitBreaker) {
+    const circuitTimeout = getLlmCircuitTimeoutMs();
     circuitBreaker = new CircuitBreaker(executeOpenAICall, {
-      timeout: CIRCUIT_BREAKER_TIMEOUT,
-      errorThresholdPercentage: CIRCUIT_BREAKER_ERROR_THRESHOLD,
-      resetTimeout: CIRCUIT_BREAKER_TIMEOUT,
-      volumeThreshold: CIRCUIT_BREAKER_VOLUME_THRESHOLD,
+      timeout: circuitTimeout,
+      errorThresholdPercentage: getLlmCircuitErrorThreshold(),
+      resetTimeout: circuitTimeout,
+      volumeThreshold: getLlmCircuitVolumeThreshold(),
       name: 'openai',
     });
 
@@ -173,20 +171,17 @@ async function executeOpenAICall<T>(fn: () => Promise<T>): Promise<T> {
   }
 }
 
-function getModel(): string {
-  return process.env.OPENAI_MODEL || 'gpt-4o';
-}
-
 async function callOpenAI(
   messages: OpenAI.Chat.ChatCompletionMessageParam[],
   maxTokens: number
 ): Promise<string> {
   const breaker = getCircuitBreaker();
   const openai = getOpenAIClient();
+  const { temperature } = loadLlmConfig();
 
   const completion = await breaker.fire(async () =>
     openai.chat.completions.create(
-      { model: getModel(), messages, temperature: RESPONSE_TEMPERATURE, max_tokens: maxTokens },
+      { model: getLlmModel(), messages, temperature, max_tokens: maxTokens },
     )
   ) as OpenAI.Chat.ChatCompletion;
 
@@ -205,7 +200,7 @@ export async function checkOpenAiHealth(): Promise<{
 }> {
   const start = Date.now();
 
-  if (!process.env.OPENAI_API_KEY) {
+  if (!isLlmConfigured()) {
     return {
       ok: false,
       latencyMs: Date.now() - start,
@@ -302,7 +297,7 @@ async function generateSingleQuestion(
   });
 
   logger.debug({ questionNumber }, 'Generating question via OpenAI');
-  return callOpenAI(messages, QUESTION_MAX_TOKENS);
+  return callOpenAI(messages, loadLlmConfig().maxTokens.question);
 }
 
 export async function generateQuestion(
@@ -348,7 +343,7 @@ export async function generateInsights(conversationHistory: Message[]): Promise<
   ];
 
   logger.debug('Generating insights via OpenAI');
-  return callOpenAI(messages, KEY_INSIGHTS_MAX_TOKENS);
+  return callOpenAI(messages, loadLlmConfig().maxTokens.keyInsights);
 }
 
 export async function generateArticleKeyInsights(text: string): Promise<string> {
@@ -360,7 +355,7 @@ export async function generateArticleKeyInsights(text: string): Promise<string> 
   ];
 
   logger.debug('Generating article key insights via OpenAI');
-  return callOpenAI(messages, KEY_INSIGHTS_MAX_TOKENS);
+  return callOpenAI(messages, loadLlmConfig().maxTokens.keyInsights);
 }
 
 export async function generateArticleSummary(text: string, keyInsights: string): Promise<string> {
@@ -373,7 +368,7 @@ export async function generateArticleSummary(text: string, keyInsights: string):
   ];
 
   logger.debug('Generating article summary via OpenAI');
-  return callOpenAI(messages, SUMMARY_MAX_TOKENS);
+  return callOpenAI(messages, loadLlmConfig().maxTokens.summary);
 }
 
 export async function generateSummary(conversationHistory: Message[], insights?: string): Promise<string> {
@@ -404,5 +399,5 @@ export async function generateSummary(conversationHistory: Message[], insights?:
   });
 
   logger.debug('Generating summary via OpenAI');
-  return callOpenAI(messages, SUMMARY_MAX_TOKENS);
+  return callOpenAI(messages, loadLlmConfig().maxTokens.summary);
 }

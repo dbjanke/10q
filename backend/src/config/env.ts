@@ -55,6 +55,7 @@ export function validateEnv(): void {
         requireEnv('GOOGLE_CLIENT_ID');
         requireEnv('GOOGLE_CLIENT_SECRET');
         requireEnv('GOOGLE_CALLBACK_URL');
+        requireEnv('OPENAI_API_KEY');
     }
 }
 
@@ -105,4 +106,36 @@ export function getResponseRateLimitMax(): number {
 
 export function getMaxConcurrentSubmissions(): number {
     return Number(process.env.MAX_CONCURRENT_SUBMISSIONS ?? 5);
+}
+
+export function isLlmConfigured(): boolean {
+    return Boolean(process.env.OPENAI_API_KEY);
+}
+
+export function getLlmApiKey(): string {
+    return requireEnv('OPENAI_API_KEY');
+}
+
+export function getLlmModel(): string {
+    return process.env.OPENAI_MODEL || 'gpt-4o';
+}
+
+export function getLlmTimeoutMs(): number {
+    return Number(process.env.OPENAI_TIMEOUT_MS ?? 15000);
+}
+
+export function getLlmMaxRetries(): number {
+    return Number(process.env.OPENAI_MAX_RETRIES ?? 2);
+}
+
+export function getLlmCircuitTimeoutMs(): number {
+    return Number(process.env.OPENAI_CIRCUIT_TIMEOUT ?? 60000);
+}
+
+export function getLlmCircuitErrorThreshold(): number {
+    return Number(process.env.OPENAI_CIRCUIT_ERROR_THRESHOLD ?? 50);
+}
+
+export function getLlmCircuitVolumeThreshold(): number {
+    return Number(process.env.OPENAI_CIRCUIT_VOLUME_THRESHOLD ?? 10);
 }

@@ -46,10 +46,9 @@ export function getUserStore(): UserStore {
 
     const backend = process.env.DATA_STORE || 'sqlite';
 
-    switch (backend) {
-        case 'sqlite':
-        default:
-            store = new SQLiteUserStore();
-            return store as UserStore;
+    if (backend !== 'sqlite') {
+        throw new Error(`Unknown DATA_STORE backend: "${backend}"`);
     }
+    store = new SQLiteUserStore();
+    return store;
 }

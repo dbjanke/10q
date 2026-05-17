@@ -37,10 +37,9 @@ export function getConversationStore(): ConversationStore {
 
     const backend = process.env.DATA_STORE || 'sqlite';
 
-    switch (backend) {
-        case 'sqlite':
-        default:
-            store = new SQLiteConversationStore();
-            return store;
+    if (backend !== 'sqlite') {
+        throw new Error(`Unknown DATA_STORE backend: "${backend}"`);
     }
+    store = new SQLiteConversationStore();
+    return store;
 }
