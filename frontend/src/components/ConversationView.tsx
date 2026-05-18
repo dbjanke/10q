@@ -8,7 +8,6 @@ import QuestionCarousel from './QuestionCarousel';
 import ResponseInput from './ResponseInput';
 import Summary from './Summary';
 import KeyInsights from './KeyInsights';
-import LoadingIndicator from './LoadingIndicator';
 import AppHeader from './AppHeader';
 
 interface ConversationViewProps {
@@ -39,6 +38,7 @@ export default function ConversationView({ currentUser, onLogout }: Conversation
   const [selectedQuestion, setSelectedQuestion] = useState<Message | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [regeneratingSummary, setRegeneratingSummary] = useState(false);
   const [regeneratingQuestion, setRegeneratingQuestion] = useState(false);
   const [regeneratingInsights, setRegeneratingInsights] = useState(false);
@@ -112,9 +112,7 @@ export default function ConversationView({ currentUser, onLogout }: Conversation
 
     try {
       setSubmitting(true);
-      setError(null);
-      setCurrentQuestionOptions([]);
-      setSelectedQuestion(null);
+      setSubmitError(null);
 
       await api.submitResponse(conversation.id, response, selectedQuestion.content);
 
@@ -122,7 +120,7 @@ export default function ConversationView({ currentUser, onLogout }: Conversation
       setTimeout(scrollToBottom, 100);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to submit response';
-      setError(message);
+      setSubmitError(message);
       console.error(err);
       throw err;
     } finally {
@@ -425,38 +423,35 @@ export default function ConversationView({ currentUser, onLogout }: Conversation
               <QuestionCarousel
                 questions={currentQuestionOptions}
                 onSelectQuestion={setSelectedQuestion}
+                disabled={submitting}
               />
             )}
 
-            {/* Input or Loading Indicator */}
-            {submitting ? (
-              <LoadingIndicator />
-            ) : (
-              selectedQuestion && (
-                <div className="stack" style={{ gap: 12 }}>
-                  {canRegenerate && (
-                    <div className="row" style={{ justifyContent: 'flex-end' }}>
-                      <button
-                        className="btn btn-ghost"
-                        onClick={handleRegenerateQuestion}
-                        disabled={regeneratingQuestion}
-                      >
-                        {regeneratingQuestion ? 'Regenerating...' : 'Regenerate question'}
-                      </button>
-                    </div>
-                  )}
+            {/* Response input */}
+            {selectedQuestion && (
+              <div className="stack" style={{ gap: 12 }}>
+                {canRegenerate && (
+                  <div className="row" style={{ justifyContent: 'flex-end' }}>
+                    <button
+                      className="btn btn-ghost"
+                      onClick={handleRegenerateQuestion}
+                      disabled={regeneratingQuestion || submitting}
+                    >
+                      {regeneratingQuestion ? 'Regenerating...' : 'Regenerate question'}
+                    </button>
+                  </div>
+                )}
 
-                  <KeyInsights
-                    insight={latestInsight}
-                    canRegenerate={canRegenerateInsights}
-                    regenerating={regeneratingInsights}
-                    disabled={submitting}
-                    onRegenerate={handleRegenerateInsights}
-                  />
+                <KeyInsights
+                  insight={latestInsight}
+                  canRegenerate={canRegenerateInsights}
+                  regenerating={regeneratingInsights}
+                  disabled={submitting}
+                  onRegenerate={handleRegenerateInsights}
+                />
 
-                  <ResponseInput onSubmit={handleResponseSubmit} disabled={submitting} />
-                </div>
-              )
+                <ResponseInput onSubmit={handleResponseSubmit} disabled={submitting} error={submitError} />
+              </div>
             )}
           </>
         )}

@@ -4,9 +4,10 @@ import { MAX_RESPONSE_LENGTH } from '../config/validation';
 interface ResponseInputProps {
   onSubmit: (response: string) => Promise<void> | void;
   disabled?: boolean;
+  error?: string | null;
 }
 
-export default function ResponseInput({ onSubmit, disabled }: ResponseInputProps) {
+export default function ResponseInput({ onSubmit, disabled, error }: ResponseInputProps) {
   const [response, setResponse] = useState('');
 
   async function handleSubmit(e: React.FormEvent) {
@@ -35,10 +36,15 @@ export default function ResponseInput({ onSubmit, disabled }: ResponseInputProps
         onChange={(e) => setResponse(e.target.value)}
         placeholder="Take your time to reflect and respond..."
         className="textarea"
-        rows={6}
+        style={{ height: 500 }}
         maxLength={MAX_RESPONSE_LENGTH}
         disabled={disabled}
       />
+      {error && (
+        <div className="error" style={{ marginTop: 12 }}>
+          {error}
+        </div>
+      )}
       <div className="row" style={{ marginTop: 14 }}>
         <span
           className="muted-small"

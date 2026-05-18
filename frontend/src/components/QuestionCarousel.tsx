@@ -5,9 +5,10 @@ import './QuestionCarousel.css';
 interface QuestionCarouselProps {
     questions: Message[];
     onSelectQuestion: (question: Message) => void;
+    disabled?: boolean;
 }
 
-export default function QuestionCarousel({ questions, onSelectQuestion }: QuestionCarouselProps) {
+export default function QuestionCarousel({ questions, onSelectQuestion, disabled }: QuestionCarouselProps) {
     const [activeIndex, setActiveIndex] = useState(0);
     const trackRef = useRef<HTMLDivElement | null>(null);
     const hasQuestions = questions.length > 0;
@@ -52,10 +53,12 @@ export default function QuestionCarousel({ questions, onSelectQuestion }: Questi
     }
 
     const handlePrev = () => {
+        if (disabled) return;
         setActiveIndex((prevIndex) => (prevIndex === 0 ? questions.length - 1 : prevIndex - 1));
     };
 
     const handleNext = () => {
+        if (disabled) return;
         setActiveIndex((prevIndex) => (prevIndex === questions.length - 1 ? 0 : prevIndex + 1));
     };
 
@@ -70,7 +73,7 @@ export default function QuestionCarousel({ questions, onSelectQuestion }: Questi
                             key={question.id}
                             data-carousel-index={index}
                             className={`carousel-slide ${isActive ? 'active' : ''}`}
-                            onClick={() => setActiveIndex(index)}
+                            onClick={() => { if (!disabled) setActiveIndex(index); }}
                             style={{
                                 opacity: isActive ? 1 : 0.5,
                                 transform: isActive ? 'scale(1)' : 'scale(0.9)',
@@ -78,10 +81,6 @@ export default function QuestionCarousel({ questions, onSelectQuestion }: Questi
                             }}
                         >
                             <div className="card question-card">
-                                <div className="row" style={{ marginBottom: 10 }}>
-                                    <span className="question-title">Question {question.questionNumber} of 10</span>
-                                    {isActive && <span className="pill pill-highlight">Selected</span>}
-                                </div>
                                 <p className="question-content">{question.content}</p>
                             </div>
                         </div>
@@ -94,6 +93,7 @@ export default function QuestionCarousel({ questions, onSelectQuestion }: Questi
                     <button
                         className="carousel-button carousel-button-prev"
                         onClick={handlePrev}
+                        disabled={disabled}
                         aria-label="Previous question"
                         title="Previous question"
                     >
@@ -104,7 +104,7 @@ export default function QuestionCarousel({ questions, onSelectQuestion }: Questi
                             <button
                                 key={index}
                                 className={`indicator ${index === currentActiveIndex ? 'active' : ''}`}
-                                onClick={() => setActiveIndex(index)}
+                                onClick={() => { if (!disabled) setActiveIndex(index); }}
                                 aria-label={`Question ${index + 1}`}
                                 aria-current={index === currentActiveIndex}
                             />
@@ -113,6 +113,7 @@ export default function QuestionCarousel({ questions, onSelectQuestion }: Questi
                     <button
                         className="carousel-button carousel-button-next"
                         onClick={handleNext}
+                        disabled={disabled}
                         aria-label="Next question"
                         title="Next question"
                     >

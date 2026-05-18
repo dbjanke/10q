@@ -51,6 +51,8 @@ In frontend tests, `vi.spyOn(window, 'confirm')` throws in jsdom because `confir
 
 `frontend/tsconfig.json` sets `"types": []` to prevent backend devDependencies (e.g. `@types/supertest`) from leaking into the frontend build via the shared root `node_modules`. Do not remove this; all frontend types are resolved through explicit imports.
 
+In `ConversationView.test.tsx`, `ResponseInput` and `LoadingIndicator` are replaced by mocks that define their own `data-testid` attributes (`submit-btn`, `loading-indicator`). These testids don't exist in the real components. When adding new props to these components, update the mocks to forward them or the props won't be visible in tests.
+
 ## Architecture
 
 Monorepo with `backend/` (Express + TypeScript + SQLite) and `frontend/` (React + Vite + Tailwind). In dev, Vite proxies `/api/*` to port 3001. In production, the backend serves `frontend/dist` at root.

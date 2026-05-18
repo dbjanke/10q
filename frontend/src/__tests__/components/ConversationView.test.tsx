@@ -14,10 +14,13 @@ vi.mock('../../components/QuestionCard', () => ({
 }));
 
 vi.mock('../../components/ResponseInput', () => ({
-    default: ({ onSubmit, disabled }: any) => (
-        <button onClick={() => Promise.resolve(onSubmit('Test response')).catch(() => {})} disabled={disabled} data-testid="submit-btn">
-            Submit
-        </button>
+    default: ({ onSubmit, disabled, error }: any) => (
+        <>
+            <button onClick={() => Promise.resolve(onSubmit('Test response')).catch(() => {})} disabled={disabled} data-testid="submit-btn">
+                Submit
+            </button>
+            {error && <div data-testid="submit-error">{error}</div>}
+        </>
     ),
 }));
 
@@ -314,22 +317,20 @@ describe('ConversationView - Completion Flow', () => {
         });
 
         const submitButton = await screen.findByTestId('submit-btn');
-        expect(screen.queryByTestId('loading-indicator')).not.toBeInTheDocument();
+        expect(submitButton).not.toBeDisabled();
         await user.click(submitButton);
 
         await waitFor(() => {
-            expect(screen.getByTestId('loading-indicator')).toBeInTheDocument();
+            expect(screen.getByTestId('submit-btn')).toBeDisabled();
         });
-        expect(screen.queryByTestId('submit-btn')).not.toBeInTheDocument();
 
         // Resolve submit, then mock the refresh getConversation call
         vi.mocked(api.getConversation).mockResolvedValueOnce(refreshedConversation as any);
         resolveSubmit!({ savedResponse: { id: 2, conversationId: 1, type: 'response', content: 'Response 5', questionNumber: 5, createdAt: new Date().toISOString() }, isComplete: false });
 
         await waitFor(() => {
-            expect(screen.queryByTestId('loading-indicator')).not.toBeInTheDocument();
+            expect(screen.getByTestId('submit-btn')).not.toBeDisabled();
         });
-        expect(await screen.findByTestId('submit-btn')).toBeInTheDocument();
     });
 
     it('allows regenerating summary with permission', async () => {
@@ -784,6 +785,9 @@ describe('ConversationView - Completion Flow', () => {
         await waitFor(() => {
             expect(screen.getByText('Failed to generate question')).toBeInTheDocument();
         });
+
+        // Form re-enables so the user can retry
+        expect(screen.getByTestId('submit-btn')).not.toBeDisabled();
     });
 
     describe('article context rendering', () => {
